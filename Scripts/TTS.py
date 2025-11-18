@@ -13,6 +13,9 @@ import torch.nn.functional as F
 
 import os
 
+import phonemizer, sys
+from phonemizer.backend import EspeakBackend
+
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(__file__)))
 

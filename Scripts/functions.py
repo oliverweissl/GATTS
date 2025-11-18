@@ -1,6 +1,4 @@
 import os
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = r"C:\Program Files\eSpeak NG\libespeak-ng.dll"  # <-- adjust if different
-
 import torch # Deep Learning Framework
 torch.manual_seed(0) # Fixes starting point of random seed for torch
 torch.backends.cudnn.benchmark = False # Fix convolution algorithm
