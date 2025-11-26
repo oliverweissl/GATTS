@@ -156,7 +156,7 @@ class StyleTTS2:
         return style_vector_acoustic, style_vector_prosodic
 
     @torch.no_grad()
-    def extract_mixed_embeddings(self, text_gt: str, text_target: str, noise: Tensor, embedding_scale: int, diffusion_steps: int):
+    def extract_mixed_embeddings(self, text_gt: str, text_target: str, noise: Tensor, embedding_scale=1, diffusion_steps=5):
         tokens_gt = self.preprocessText(text_gt)
         tokens_target = self.preprocessText(text_target)
 
@@ -209,10 +209,10 @@ class StyleTTS2:
             style_vector_prosodic.squeeze().unsqueeze(0)
         )
 
-        return out
+        return out.squeeze().cpu().numpy()
 
     @torch.no_grad()
-    def inference(self, text: str, noise: Tensor, embedding_scale, diffusion_steps) -> Tensor:
+    def inference(self, text: str, noise: Tensor, embedding_scale=1, diffusion_steps=5):
 
         tokens = self.preprocessText(text)
 
