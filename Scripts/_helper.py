@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+import math
 
 def length_to_mask(lengths: Tensor) -> Tensor:
     mask = torch.arange(lengths.max())  # Creates a Vector [0,1,2,3,...,x], where x = biggest value in lengths
@@ -58,3 +59,13 @@ def interpolateWithVector(ground_truth: Tensor, target: Tensor, alpha: Tensor) -
 
 def interpolateWithScalar(a: Tensor, b: Tensor, alpha: float) -> Tensor:
     return (1 - alpha) * a + alpha * b
+
+def text_naturalness_from_ppl(ppl, min_loss=1.0, max_loss=10.0):
+    """
+    ppl: perplexity from your LM
+    Returns score in [0,1], where 1 = very natural/common.
+    """
+    loss = math.log(ppl)             # log PPL = cross-entropy-ish
+    loss = max(min(loss, max_loss), min_loss)
+    return 1.0 - (loss - min_loss) / (max_loss - min_loss)
+
