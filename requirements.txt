@@ -13,6 +13,7 @@ numpy>=1.26.0
 openai-whisper
 pandas
 phonemizer
+pickleshare
 pydub
 pymoo
 pyyaml
