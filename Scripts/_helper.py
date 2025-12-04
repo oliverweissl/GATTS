@@ -1,6 +1,5 @@
 import torch
 from torch import Tensor
-import math
 
 from enum import Enum, auto
 
@@ -10,67 +9,30 @@ class AttackMode(Enum):
     UNTARGETED = "untargeted"
 
 class FitnessObjective(Enum):
+
+    # ==== Interpolation Vector Restrictions ====
+    L1 = auto()
+    L2 = auto()
+
+    # ==== Optimize Text Towards Target ====
+    WER_TARGET = auto()
+    SBERT_TARGET = auto()
+    TEXT_EMB_TARGET = auto()
+
+    # ==== Optimize Text Away From Ground-Truth ====
+    WER_GT = auto()
+    SBERT_GT = auto()
+    TEXT_EMB_GT = auto()
+
+    # ==== Increase Naturalness ====
     AVG_LOGPROB = auto()
+    UTMOS = auto()
     PPL = auto()
 
-    # --- Quality & Intelligibility ---
-
-    UTMOS = auto()
-    # Predicts perceived MOS quality (higher = better).
-    # Uses a neural proxy model for human MOS ratings.
-    # Objective: MAXIMIZE audio naturalness & clarity.
-
-    WER = auto()
-    # Word Error Rate of ASR transcription (lower = better).
-    # High WER means the audio is unintelligible.
-    # Objective: MINIMIZE transcription errors.
-
-    # --- Speaker Similarity (Voice Identity) ---
-
+    # ==== Optimize Audio Similarity ====
     WAV2VEC_GT = auto()
-    # Cosine similarity between generated audio and ground-truth audio
-    # using wav2vec2 speech embeddings.
-    # Objective: MAXIMIZE similarity to original speaker/voice.
-
     WAV2VEC_TARGET = auto()
-    # Cosine similarity between generated audio and target speaker audio.
-    # Objective: MAXIMIZE similarity to target speaker.
-    # (Useful for voice conversion / targeted mixing.)
 
-    # --- Content Similarity (Text/Meaning Preservation) ---
-
-    SBERT_GT = auto()
-    # Semantic similarity between generated and GT text embeddings
-    # using sentence-BERT.
-    # Objective: MAXIMIZE preservation of original meaning/content.
-
-    SBERT_TARGET = auto()
-    # Semantic similarity between generated audio's ASR text
-    # and target text using sentence-BERT.
-    # Objective: MAXIMIZE resemblance to target semantics.
-
-    # --- Text Embedding Distance (Direct Embedding Control) ---
-
-    TEXT_EMB_GT = auto()
-    # Embedding distance between GT text and generated text.
-    # Often used when ASR is expensive.
-    # Objective: MINIMIZE distance (stay close to GT).
-
-    TEXT_EMB_TARGET = auto()
-    # Embedding distance between target text and generated text.
-    # Objective: MINIMIZE distance (move semantics toward target).
-
-    # --- Vector Constraints (Regularization) ---
-
-    L1 = auto()
-    # L1 norm penalty on interpolation vector.
-    # Encourages sparsity (few phonemes change strongly).
-    # Objective: MINIMIZE absolute magnitude of perturbation.
-
-    L2 = auto()
-    # L2 norm penalty on interpolation vector.
-    # Keeps perturbation small & prevents adversarial collapse.
-    # Objective: MINIMIZE vector energy (smooth, small changes).
 
 def length_to_mask(lengths: Tensor) -> Tensor:
     mask = torch.arange(lengths.max())  # Creates a Vector [0,1,2,3,...,x], where x = biggest value in lengths
@@ -107,23 +69,66 @@ def addNumbersPattern(a: Tensor, b: Tensor, pattern: list[int]) -> tuple[Tensor,
 
     return a, b
 
-def adjustInterpolationVector(IV: Tensor, matrix: Tensor, size_per_phoneme: int) -> Tensor:
+import torch
+
+def _extend_to_size(x: torch.Tensor, target_size: int) -> torch.Tensor:
+    """
+    Extends the last dimension of x to `target_size` by *repeating elements in order*.
+
+    Each position j in the original last dimension is repeated either
+    floor(target_size / a) or ceil(target_size / a) times, with the
+    first `target_size % a` positions getting the extra repeat.
+
+    Example (a = 4, target_size = 8):
+        [0.5, 0.9, 0.134, 0.542]
+        -> [0.5, 0.5, 0.9, 0.9, 0.134, 0.134, 0.542, 0.542]
+
+    Example (a = 5, target_size = 8):
+        [1, 2, 3, 4, 5]
+        -> [1, 1, 2, 2, 3, 3, 4, 5]
+
+    x: (p, a)
+    returns: (p, target_size)
+    """
+    p, a = x.shape
+
+    # If already large enough, just crop
+    if a >= target_size:
+        return x[:, :target_size]
+
+    # How many repeats per original position?
+    base = target_size // a          # minimum repeats for each index
+    rem = target_size % a            # first `rem` indices get one extra repeat
+
+
+    # repeats[i] = how often index i should appear
+    repeats = torch.full((a,), base, device=x.device, dtype=torch.long)
+    if rem > 0:
+        repeats[:rem] += 1
+
+
+    # Build index pattern like:
+    # a=4, target=8 -> base=2, rem=0, repeats=[2,2,2,2]
+    # indices = [0,0,1,1,2,2,3,3]
+    idx = torch.arange(a, device=x.device).repeat_interleave(repeats)
+
+    # Safety: idx should be exactly target_size long
+    assert idx.numel() == target_size, f"idx has length {idx.numel()}, expected {target_size}"
+
+    # Apply same index pattern to all rows
+    return_vector = x[:, idx]
+    return return_vector
+
+def adjustInterpolationVector(IV: Tensor, matrix: Tensor, subspace_optimization: bool) -> Tensor:
 
     # Matrix Multiplication, since IV not Scalar Value
-    if size_per_phoneme != 1:
-        IV = IV @ matrix
+    if IV.shape[1] != 1:
+        if subspace_optimization:
+            IV = IV @ matrix
+        else:
+            IV = _extend_to_size(IV, 512)
 
-    IV = IV.unsqueeze(0)
-    IV = IV.permute(0, 2, 1)
+    IV = IV.permute(1, 0).unsqueeze(0)
 
     return IV
-
-def text_naturalness_from_ppl(ppl, min_loss=1.0, max_loss=10.0):
-    """
-    ppl: perplexity from your LM
-    Returns score in [0,1], where 1 = very natural/common.
-    """
-    loss = math.log(ppl)             # log PPL = cross-entropy-ish
-    loss = max(min(loss, max_loss), min_loss)
-    return 1.0 - (loss - min_loss) / (max_loss - min_loss)
 
