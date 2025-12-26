@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import torch
 import numpy as np
 import re
@@ -10,7 +8,9 @@ from sentence_transformers import util
 from pesq import pesq
 from tqdm import tqdm
 
-from _helper import adjustInterpolationVector, AttackMode, FitnessObjective
+from _dataclass import FitnessData
+from _enum import AttackMode, FitnessObjective
+from _helper import adjustInterpolationVector
 
 def run_optimization_generation(config_data, model_data, audio_data, embedding_data, iteration, device):
     """
@@ -432,11 +432,7 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
 
         # 6. Add fitness to history
         mean_fitness_history.append(gen_mean)
-
-        print("Number of all individuals: ", len(total_fitness))
         total_fitness_history.append(total_fitness)
-
-        print("Number of pareto-optimal individuals: ", len(current_front))
         pareto_fitness_history.append(current_front)
 
         if stop_optimization:

@@ -1,7 +1,6 @@
-from typing import Optional, Any
-
 import jiwer
 import numpy as np
+import torch
 from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, Wav2Vec2Model, Wav2Vec2Processor
@@ -15,14 +14,9 @@ from _helper import addNumbersPattern
 from _pymoo_optimizer import PymooOptimizer
 from pymoo.algorithms.moo.nsga2 import NSGA2
 
-
-from dataclasses import dataclass
-from typing import List, Set, Dict
-import torch
-
 # Import your Enums
-from _helper import AttackMode, FitnessObjective
-from _entities import *
+from _dataclass import ModelData, ConfigData, AudioData, EmbeddingData
+from _enum import FitnessObjective, AttackMode
 
 def initialize_environment(args, device):
 

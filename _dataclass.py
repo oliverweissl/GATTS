@@ -1,8 +1,7 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Set, Dict, Optional, Any
 import torch
-import numpy as np
-from _helper import AttackMode, FitnessObjective
+from _enum import AttackMode, FitnessObjective
 
 @dataclass
 class ConfigData:

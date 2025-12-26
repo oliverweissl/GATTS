@@ -1,17 +1,12 @@
 import torch
-import numpy as np
 import argparse
-import os
 from tqdm import tqdm
-from dotenv import load_dotenv
 
 
 # Import your new specialized modules
 from model_loader import initialize_environment
 from core_logic import run_optimization_generation
 from reporting import finalize_run
-from _helper import FitnessObjective, AttackMode
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Adversarial TTS Optimization Executable")
@@ -24,9 +19,9 @@ def parse_arguments():
 
     # Numeric parameters
     parser.add_argument("--loop_count", type=int, default=1, help="The loop count to use.")
-    parser.add_argument("--num_generations", type=int, default=100,
+    parser.add_argument("--num_generations", type=int, default=4,
                         help="Number of generations for the optimizer.")
-    parser.add_argument("--pop_size", type=int, default=100,
+    parser.add_argument("--pop_size", type=int, default=4,
                         help="Population size.")
     parser.add_argument("--iv_scalar", type=float, default=0.5,
                         help="Interpolation vector scalar.")

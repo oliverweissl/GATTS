@@ -1,6 +1,5 @@
 import datetime
 import platform
-import torch
 import pandas as pd
 import soundfile as sf
 import requests
@@ -11,9 +10,10 @@ import matplotlib.cm as cm
 import numpy as np
 import os
 
-from _entities import *
+from _dataclass import *
 # Local imports
-from _helper import adjustInterpolationVector, AttackMode
+from _helper import adjustInterpolationVector
+from _enum import AttackMode
 
 from Scripts._optimizer_candidate import OptimizerCandidate
 
@@ -21,7 +21,7 @@ def finalize_run(config_data, fitness_data, model_data, audio_data, progress_bar
 
     # 1. Setup Directory
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    objectives_str = "_".join(config_data.active_objectives) if config_data.active_objectives else "NONE"
+    objectives_str = "_".join([obj.name for obj in config_data.active_objectives]) if config_data.active_objectives else "NONE"
 
     folder_path = os.path.join("outputs", "h_text", objectives_str, timestamp)
     os.makedirs(folder_path, exist_ok=True)
@@ -77,7 +77,7 @@ def _generate_all_visualizations(config_data, fitness_data, folder_path):
 
     # Image 3: Population Evolution
     _generate_total_population_graph(
-        fitness_data.total_fitness_history,
+        fitness_data.total_fitness,
         active_objectives,
         folder_path
     )
@@ -163,8 +163,11 @@ def _generate_mean_population_graph(mean_history, active_objectives, folder_path
 
     plt.xlabel("Generation")
     plt.tight_layout(rect=[0, 0.03, 1, 0.96])
-    plt.savefig(os.path.join(folder_path, "mean_fitness_stack.png"), dpi=300)
+    save_path = os.path.join(folder_path, "mean_fitness_stack.png")
+    plt.savefig(save_path, dpi=300)
     plt.close()
+    print(f"Mean population graph saved to: {save_path}")
+
 
 def _generate_total_population_graph(history_pop_fitness, active_objectives, folder_path):
     """
