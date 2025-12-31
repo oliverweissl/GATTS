@@ -30,18 +30,21 @@ def finalize_run(config_data, fitness_data, model_data, audio_data, progress_bar
     # 2. Plot Graphs
     _generate_all_visualizations(config_data, fitness_data, folder_path)
 
-    # 3. Get Best Candidate & Run Inference
-    best_candidate = _select_best_candidate(model_data.optimizer.best_candidates)
+    # 3. Run Inference on Best Candidates
 
-    best_mixed_audio = _run_final_inference(
-        best_candidate, model_data.tts_model, model_data.asr_model, audio_data, config_data, device
-    )
+    # Save Audio
+    sf.write(os.path.join(folder_path, "ground_truth.wav"), audio_data.audio_gt, samplerate=24000)
+    sf.write(os.path.join(folder_path, "target.wav"), audio_data.audio_target, samplerate=24000)
 
-    # 4. Save Audio & Torch State
-    _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate)
+    for i, best_candidate in enumerate(model_data.optimizer.best_candidates):
+        best_mixed_audio = _run_final_inference(best_candidate, model_data.tts_model, model_data.asr_model, audio_data, config_data, device)
+
+        # 4. Save Audio & Torch State
+        sf.write(os.path.join(folder_path, f"pareto_optima_number_{i}.wav"), best_mixed_audio.audio, samplerate=24000)
+        _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate, i)
 
     # 5. Write Text Summary
-    _write_run_summary(folder_path, config_data, best_mixed_audio, best_candidate, progress_bar, gen)
+    _write_run_summary(folder_path, config_data, progress_bar, gen)
 
     # 6. Notify (WhatsApp)
     if config_data.notify:
@@ -307,13 +310,7 @@ def _run_final_inference(best_candidate, tts_model, asr_model, audio_data, confi
         h_bert=h_bert_mixed_best
     )
 
-def _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate):
-
-    """Fixed: Uses 'data' dictionary keys."""
-    # Save Audio
-    sf.write(os.path.join(folder_path, "ground_truth.wav"), audio_data.audio_gt, samplerate=24000)
-    sf.write(os.path.join(folder_path, "target.wav"), audio_data.audio_target, samplerate=24000)
-    sf.write(os.path.join(folder_path, "interpolated.wav"), best_mixed_audio.audio, samplerate=24000)
+def _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate, i):
 
     # Save Torch State
     state_dict = {
@@ -347,10 +344,10 @@ def _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best
         "noise": audio_data.noise
     }
 
-    torch.save(state_dict, os.path.join(folder_path, "best_vector.pt"))
+    torch.save(state_dict, os.path.join(folder_path, "best_vector_"+i+".pt"))
 
 
-def _write_run_summary(folder_path: str, config_data: ConfigData, best_mixed_audio: BestMixedAudio, best_candidate: OptimizerCandidate, progress_bar, gen):
+def _write_run_summary(folder_path: str, config_data: ConfigData, progress_bar, gen):
 
     # 1. Hardware Detection
     os_info = f"{platform.system()} {platform.release()}"
@@ -395,16 +392,6 @@ def _write_run_summary(folder_path: str, config_data: ConfigData, best_mixed_aud
         f.write(f"{hardware_str}\n")
         f.write(f"Total Duration:    {elapsed:.2f}s\n")
         f.write(f"Avg per Gen:       {time_per_gen:.2f}s\n")
-
-        f.write(f"\n--- Best Candidate Fitness ---\n")
-        f.write(f"Generation Found:  {getattr(best_candidate, 'generation', 'Unknown')}\n\n")
-
-        for obj, score in zip(config_data.active_objectives, best_candidate.fitness):
-            f.write(f"  {obj.name}: {float(score):.6f}\n")
-
-        f.write(f"\n--- ASR Final Result ---\n")
-        f.write(f"Transcription:     \"{best_mixed_audio.text}\"\n")
-        f.write(f"Confidence/Logprob: {best_mixed_audio.logprob:.6f}\n")
 
 def _send_whatsapp_notification():
     load_dotenv()
