@@ -50,7 +50,6 @@ def parse_arguments():
 
 def main():
     # 1. Parse Arguments and set Device
-
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args = parse_arguments()
 
