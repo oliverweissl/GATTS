@@ -1,4 +1,5 @@
 accelerate==0.31.0
+dotenv
 einops
 einops-exts
 git+https://github.com/resemble-ai/monotonic_align.git

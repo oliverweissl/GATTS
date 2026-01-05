@@ -10,8 +10,8 @@ from pymoo.core.problem import Problem
 from pymoo.core.termination import NoTermination
 from pymoo.problems.static import StaticProblem
 
-from _optimizer import Optimizer
-from _optimizer_candidate import OptimizerCandidate
+from Optimizer._optimizer import Optimizer
+from Optimizer._optimizer_candidate import OptimizerCandidate
 
 class PymooOptimizer(Optimizer):
     """A Learner class for easy Pymoo integration"""

@@ -6,17 +6,17 @@ from sentence_transformers import SentenceTransformer
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, Wav2Vec2Model, Wav2Vec2Processor
 
 # Local imports
-from _styletts2 import StyleTTS2
-from _asr_model import AutomaticSpeechRecognitionModel
-from _helper import addNumbersPattern
+from Models.styletts2 import StyleTTS2
+from Models.asr_model import AutomaticSpeechRecognitionModel
+from helper import addNumbersPattern
 
 # Import Pymoo components
-from _pymoo_optimizer import PymooOptimizer
+from Optimizer.pymoo_optimizer import PymooOptimizer
 from pymoo.algorithms.moo.nsga2 import NSGA2
 
 # Import your Enums
-from _dataclass import ModelData, ConfigData, AudioData, EmbeddingData
-from _enum import FitnessObjective, AttackMode
+from Datastructures.dataclass import ModelData, ConfigData, AudioData, EmbeddingData
+from Datastructures.enum import FitnessObjective, AttackMode
 
 def initialize_environment(args, device):
 
@@ -161,7 +161,7 @@ def _generate_audio_data(config, tts, device):
     return AudioData(audio_gt, audio_target, h_text_gt, h_text_target, h_bert_raw_gt, h_bert_raw_target, h_bert_gt, h_bert_target, input_lengths, text_mask, style_ac_gt, style_pro_gt, noise)
 
 def load_optimizer(audio_data, config_data):
-    print("Initializing Optimizer...")
+
     phoneme_count = audio_data.input_lengths.detach().cpu().item()
 
     return PymooOptimizer(
@@ -206,9 +206,9 @@ def _load_conditional_assets(model_data, config_data, audio_data, device):
         utmos_model = torch.jit.load(
             hf_hub_download(
                 repo_id="balacoon/utmos",
-                filename="utmos.jit",
+                filename="../utmos.jit",
                 repo_type="model",
-                local_dir="./"
+                local_dir="../"
             ),
             map_location=device
         )

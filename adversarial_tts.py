@@ -4,9 +4,9 @@ from tqdm import tqdm
 
 
 # Import your new specialized modules
-from model_loader import initialize_environment, load_optimizer
-from core_logic import run_optimization_generation
-from reporting import finalize_run
+from Adversarial_TTS.model_loader import initialize_environment, load_optimizer
+from Adversarial_TTS.core_logic import run_optimization_generation
+from Adversarial_TTS.reporting import finalize_run
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Adversarial TTS Optimization Executable")
@@ -16,9 +16,9 @@ def parse_arguments():
     parser.add_argument("--target_text", type=str, default="The Seattle Seahawks are the best Team in the world", help="The target text input.")
 
     # Numeric parameters
-    parser.add_argument("--loop_count", type=int, default=10, help="The loop count to use.")
-    parser.add_argument("--num_generations", type=int, default=200, help="Number of generations for the optimizer.")
-    parser.add_argument("--pop_size", type=int, default=100, help="Population size.")
+    parser.add_argument("--loop_count", type=int, default=1, help="The loop count to use.")
+    parser.add_argument("--num_generations", type=int, default=8, help="Number of generations for the optimizer.")
+    parser.add_argument("--pop_size", type=int, default=8, help="Population size.")
     parser.add_argument("--iv_scalar", type=float, default=0.5, help="Interpolation vector scalar.")
     parser.add_argument("--size_per_phoneme", type=int, default=1, help="Size per phoneme.")
 

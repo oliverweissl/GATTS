@@ -5,17 +5,14 @@ from phonemizer.backend import EspeakBackend
 
 from nltk.tokenize import word_tokenize
 
-import yaml
-
 from models import *
 from utils import *
 from text_utils import TextCleaner
 from Utils.PLBERT.util import load_plbert
 from Modules.diffusion.sampler import DiffusionSampler, ADPM2Sampler, KarrasSchedule
 
-from _helper import addNumbersPattern
+from helper import addNumbersPattern
 
-import numpy as np
 
 class StyleTTS2:
 
@@ -43,7 +40,7 @@ class StyleTTS2:
 
         self.textcleaner = TextCleaner()  # Lowercasing & trimming, expanding numbers & symbols, handling punctuation, phoneme conversion, tokenization
 
-    def load_models(self, yml_path="Models/LJSpeech/config.yml"):
+    def load_models(self, yml_path="Audio/LJSpeech/config.yml"):
         config = yaml.safe_load(open(yml_path))  # YAML File with model settings and pretrained checkpoints (ASR, F0, PL-BERT)
 
         # load pretrained ASR (Automatic Speech Recognition) model
@@ -69,7 +66,7 @@ class StyleTTS2:
         _ = [self.model[key].eval() for key in self.model]
         _ = [self.model[key].to(self.device) for key in self.model]
 
-        params_whole = torch.load("Models/LJSpeech/epoch_2nd_00100.pth", map_location='cpu', weights_only=False)
+        params_whole = torch.load("Audio/LJSpeech/epoch_2nd_00100.pth", map_location='cpu', weights_only=False)
         self.params = params_whole['net']
 
     def load_checkpoints(self):

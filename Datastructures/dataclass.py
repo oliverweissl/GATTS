@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Set, Dict, Optional, Any
 import torch
-from _enum import AttackMode, FitnessObjective
+from Datastructures.enum import AttackMode, FitnessObjective
 
 @dataclass
 class ConfigData:
@@ -61,12 +61,12 @@ class ConfigData:
 
 @dataclass
 class ModelData:
-    # Required Models
+    # Required Audio
     tts_model: Any  # StyleTTS2
     asr_model: Any  # AutomaticSpeechRecognitionModel
     optimizer: Any  # PymooOptimizer
 
-    # Conditional Models (Default to None)
+    # Conditional Audio (Default to None)
     embedding_model: Optional[Any] = None  # SentenceTransformer (MPNet)
     sbert_model: Optional[Any] = None  # SentenceTransformer (MiniLM)
     utmos_model: Optional[Any] = None  # TorchScript Module

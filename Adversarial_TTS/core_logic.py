@@ -7,11 +7,10 @@ import torch.nn.functional as F
 from sentence_transformers import util
 from pesq import pesq
 from tqdm import tqdm
-import time
 
-from _dataclass import FitnessData
-from _enum import AttackMode, FitnessObjective
-from _helper import adjustInterpolationVector
+from Datastructures.dataclass import FitnessData
+from Datastructures.enum import AttackMode, FitnessObjective
+from helper import adjustInterpolationVector
 
 def run_optimization_generation(config_data, model_data, audio_data, embedding_data, iteration, device):
     """
@@ -34,9 +33,6 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
 
     progress_bar = tqdm(range(config_data.num_generations), desc=f"Current Generation {iteration + 1}", leave=False)
     gen = -1
-
-    t_cpu = 0
-    t_gpu = 0
 
     for gen in progress_bar:
 
@@ -61,8 +57,6 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
                 h_text_mixed = audio_data.h_text_gt + config_data.iv_scalar * interpolation_vector
 
             h_bert_mixed = audio_data.h_bert_gt
-
-            t0 += time.time()
 
             # Inference
             audio_mixed = tts_model.inference_after_interpolation(
@@ -89,9 +83,6 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
                 continue
 
             asr_text = clean_text
-
-            t1 = time.time()
-            t_gpu += (t1 - t0)
 
             # ==== Increase Naturalness ====
             if FitnessObjective.PHONEME_COUNT in active_objectives:
@@ -406,8 +397,6 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
                 gen_scores[FitnessObjective.WAV2VEC_ASR].append(val)
                 current_ind_scores[FitnessObjective.WAV2VEC_ASR] = val
 
-            t_gpu += (time.time() - t1)
-
             # ==== EARLY STOPPING CHECK ====
             # Only run this logic if the user actually provided thresholds via terminal
             if config_data.thresholds:
@@ -429,8 +418,6 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
                 if meets_all_criteria:
                     stop_optimization = True
 
-
-        tqdm.write(f"GPU Time: {t_gpu:.4f}s | CPU/Metrics Time: {t_cpu:.4f}s")
 
         # 3. Calculate per-generation means
         gen_mean: dict[str, float] = {"Generation": gen}

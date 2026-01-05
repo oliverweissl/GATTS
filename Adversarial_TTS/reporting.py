@@ -11,12 +11,11 @@ import matplotlib.cm as cm
 import numpy as np
 import os
 
-from _dataclass import *
+from Datastructures.dataclass import *
 # Local imports
-from _helper import adjustInterpolationVector
-from _enum import AttackMode
+from helper import adjustInterpolationVector
+from Datastructures.enum import AttackMode
 
-from Scripts._optimizer_candidate import OptimizerCandidate
 
 def finalize_run(config_data, fitness_data, model_data, audio_data, progress_bar, gen, device):
 
@@ -36,12 +35,12 @@ def finalize_run(config_data, fitness_data, model_data, audio_data, progress_bar
     sf.write(os.path.join(folder_path, "ground_truth.wav"), audio_data.audio_gt, samplerate=24000)
     sf.write(os.path.join(folder_path, "target.wav"), audio_data.audio_target, samplerate=24000)
 
-    for i, best_candidate in enumerate(model_data.optimizer.best_candidates):
-        best_mixed_audio = _run_final_inference(best_candidate, model_data.tts_model, model_data.asr_model, audio_data, config_data, device)
+    best_candidate = _select_best_candidate(model_data.optimizer.best_candidates)
+    best_mixed_audio = _run_final_inference(best_candidate, model_data.tts_model, model_data.asr_model, audio_data, config_data, device)
 
-        # 4. Save Audio & Torch State
-        sf.write(os.path.join(folder_path, f"pareto_optima_number_{i}.wav"), best_mixed_audio.audio, samplerate=24000)
-        _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate, i)
+    # 4. Save Audio & Torch State
+    sf.write(os.path.join(folder_path, f"best_candidate.wav"), best_mixed_audio.audio, samplerate=24000)
+    _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate)
 
     # 5. Write Text Summary
     _write_run_summary(folder_path, config_data, progress_bar, gen)
@@ -172,7 +171,6 @@ def _generate_mean_population_graph(mean_history, active_objectives, folder_path
     save_path = os.path.join(folder_path, "mean_fitness_stack.png")
     plt.savefig(save_path, dpi=300)
     plt.close()
-
 
 def _generate_total_population_graph(history_pop_fitness, active_objectives, folder_path):
     """
@@ -310,7 +308,7 @@ def _run_final_inference(best_candidate, tts_model, asr_model, audio_data, confi
         h_bert=h_bert_mixed_best
     )
 
-def _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate, i):
+def _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best_candidate):
 
     # Save Torch State
     state_dict = {
@@ -344,7 +342,7 @@ def _save_artifacts(folder_path, best_mixed_audio, audio_data, config_data, best
         "noise": audio_data.noise
     }
 
-    torch.save(state_dict, os.path.join(folder_path, "best_vector_"+i+".pt"))
+    torch.save(state_dict, os.path.join(folder_path, "best_vector.pt"))
 
 
 def _write_run_summary(folder_path: str, config_data: ConfigData, progress_bar, gen):

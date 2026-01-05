@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 from torch import Tensor
 
-from _optimizer_candidate import OptimizerCandidate
+from Optimizer._optimizer_candidate import OptimizerCandidate
 
 class Optimizer(ABC):
     """An abstract optimizer class."""
