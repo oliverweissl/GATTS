@@ -135,14 +135,14 @@ def _generate_audio_data(config, tts, device):
     if config.mode is AttackMode.TARGETED:
         # Text -> Tokens, while adding Tokens if necessary
         tokens_gt, tokens_target = addNumbersPattern(
-            tts.preprocessText(config.text_gt),
-            tts.preprocessText(config.text_target),
+            tts.preprocess_text(config.text_gt),
+            tts.preprocess_text(config.text_target),
             [16, 4]
         )
         h_text_gt, h_bert_raw_gt, h_bert_gt, input_lengths, text_mask = tts.extract_embeddings(tokens_gt)
         h_text_target, h_bert_raw_target, h_bert_target, _, _ = tts.extract_embeddings(tokens_target)
     else:
-        tokens_gt = tts.preprocessText(config.text_gt)
+        tokens_gt = tts.preprocess_text(config.text_gt)
         h_text_gt, h_bert_raw_gt, h_bert_gt, input_lengths, text_mask = tts.extract_embeddings(tokens_gt)
 
         h_text_target = torch.randn_like(h_text_gt)
@@ -155,12 +155,12 @@ def _generate_audio_data(config, tts, device):
         h_bert_target /= h_bert_target.norm()
 
     # Generate Style Vector
-    style_ac_gt, style_pro_gt = tts.computeStyleVector(noise, h_bert_raw_gt, config.embedding_scale, config.diffusion_steps)
-    style_ac_target, style_pro_target = tts.computeStyleVector(noise, h_bert_raw_target, config.embedding_scale, config.diffusion_steps)
+    style_ac_gt, style_pro_gt = tts.compute_style_vector(noise, h_bert_raw_gt, config.embedding_scale, config.diffusion_steps)
+    style_ac_target, style_pro_target = tts.compute_style_vector(noise, h_bert_raw_target, config.embedding_scale, config.diffusion_steps)
 
     # Run rest of inference for ground-truth and target
-    audio_gt = tts.inference_after_interpolation_iterative(input_lengths, text_mask, h_bert_gt, h_text_gt, style_ac_gt, style_pro_gt)
-    audio_target = tts.inference_after_interpolation_iterative(input_lengths, text_mask, h_bert_target, h_text_target, style_ac_target, style_pro_target)
+    audio_gt = tts.inference_on_embedding(input_lengths, text_mask, h_bert_gt, h_text_gt, style_ac_gt, style_pro_gt)
+    audio_target = tts.inference_on_embedding(input_lengths, text_mask, h_bert_target, h_text_target, style_ac_target, style_pro_target)
 
     return AudioData(audio_gt, audio_target, h_text_gt, h_text_target, h_bert_raw_gt, h_bert_raw_target, h_bert_gt, h_bert_target, input_lengths, text_mask, style_ac_gt, style_pro_gt, noise)
 

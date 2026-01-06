@@ -28,9 +28,7 @@ def finalize_run(config_data, fitness_data, model_data, audio_data, progress_bar
     # 2. Plot Graphs
     _generate_all_visualizations(config_data, fitness_data, folder_path)
 
-    # 3. Run Inference on Best Candidates
-
-    # Save Audio
+    # 3. Save Audio
     sf.write(os.path.join(folder_path, "ground_truth.wav"), audio_data.audio_gt, samplerate=24000)
     sf.write(os.path.join(folder_path, "target.wav"), audio_data.audio_target, samplerate=24000)
 
@@ -289,7 +287,7 @@ def _run_final_inference(best_candidate, tts_model, asr_model, audio_data, confi
 
     # Inference
     with torch.no_grad():
-        audio_best = tts_model.inference_after_interpolation_iterative(
+        audio_best = tts_model.inference_on_embedding(
             audio_data.input_lengths,
             audio_data.text_mask,
             h_bert_mixed_best,

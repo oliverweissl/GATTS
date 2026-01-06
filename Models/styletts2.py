@@ -12,7 +12,8 @@ from text_utils import TextCleaner
 from Utils.PLBERT.util import load_plbert
 from Modules.diffusion.sampler import DiffusionSampler, ADPM2Sampler, KarrasSchedule
 
-from helper import addNumbersPattern
+from helper import addNumbersPattern, adjustInterpolationVector
+from Datastructures.enum import AttackMode
 
 
 class StyleTTS2:
@@ -97,7 +98,7 @@ class StyleTTS2:
         )
 
     # Turns text to tensor with token ID
-    def preprocessText(self, text: str) -> Tensor:
+    def preprocess_text(self, text: str) -> Tensor:
         # 1. Preprocessing Text
         text = text.strip()  # Removes whitespaces from beginning and end of string
         text = text.replace('"', '')  # removes " to prevent unpredictable behavior
@@ -137,10 +138,7 @@ class StyleTTS2:
 
         return a_pred
 
-    import torch
-    from torch import Tensor
-
-    def predictDuration(self, bert_encoder_with_style: Tensor, input_lengths: Tensor) -> Tensor:
+    def predict_duration(self, bert_encoder_with_style: Tensor, input_lengths: Tensor) -> Tensor:
         # 1. Transpose Input for LSTM
         # Input: (Batch, Channels, Phonemes) -> (4, 512, 53)
         # Target: (Batch, Phonemes, Channels) -> (4, 53, 512)
@@ -195,7 +193,7 @@ class StyleTTS2:
         return a_pred
 
     @torch.no_grad()
-    def computeStyleVector(self, noise: Tensor, h_bert: Tensor, embedding_scale: int, diffusion_steps: int) -> tuple[Tensor, Tensor]:
+    def compute_style_vector(self, noise: Tensor, h_bert: Tensor, embedding_scale: int, diffusion_steps: int) -> tuple[Tensor, Tensor]:
 
         style_vector = self.sampler(
             noise,
@@ -212,8 +210,8 @@ class StyleTTS2:
 
     @torch.no_grad()
     def extract_mixed_embeddings(self, text_gt: str, text_target: str, noise: Tensor, embedding_scale=1, diffusion_steps=5):
-        tokens_gt = self.preprocessText(text_gt)
-        tokens_target = self.preprocessText(text_target)
+        tokens_gt = self.preprocess_text(text_gt)
+        tokens_target = self.preprocess_text(text_target)
 
         tokens_gt = addNumbersPattern(tokens_gt, tokens_target, [16, 4])
         assert tokens_gt.shape == tokens_target.shape, "Padding didn't work, ground truth and target are of different dimensions"
@@ -221,7 +219,7 @@ class StyleTTS2:
         h_text_gt, h_bert_raw_gt, h_bert_gt, input_lengths, text_mask = self.extract_embeddings(tokens_gt)
         h_text_target, h_bert_raw_target, h_bert_target, _, _ = self.extract_embeddings(tokens_target)
 
-        style_vector_acoustic, style_vector_prosodic = self.computeStyleVector(noise, h_bert_raw_target, embedding_scale, diffusion_steps)
+        style_vector_acoustic, style_vector_prosodic = self.compute_style_vector(noise, h_bert_raw_target, embedding_scale, diffusion_steps)
 
         return h_text_gt, h_bert_raw_gt, h_bert_gt, h_text_target, h_bert_raw_target, h_bert_target, input_lengths, text_mask, style_vector_acoustic, style_vector_prosodic
 
@@ -241,13 +239,13 @@ class StyleTTS2:
         return h_text, h_bert_raw, h_bert, input_lengths, text_mask
 
     @torch.no_grad()
-    def inference_after_interpolation_iterative(self, input_lengths: Tensor, text_mask: Tensor, h_bert: Tensor, h_text: Tensor, style_vector_acoustic: Tensor, style_vector_prosodic: Tensor) -> Tensor:
+    def inference_on_embedding(self, input_lengths: Tensor, text_mask: Tensor, h_bert: Tensor, h_text: Tensor, style_vector_acoustic: Tensor, style_vector_prosodic: Tensor) -> Tensor:
 
         # AdaIN, Adding information of style vector to phoneme
         h_bert_with_style = self.model.predictor.text_encoder(h_bert, style_vector_acoustic, input_lengths, text_mask)
 
         # Function Call
-        a_pred = self.predictDurationIterative( h_bert_with_style, input_lengths)
+        a_pred = self.predictDurationIterative(h_bert_with_style, input_lengths)
 
         # Multiply alignment matrix with h_text
         h_aligned = h_text @ a_pred.unsqueeze(0).to(self.device)
@@ -267,14 +265,35 @@ class StyleTTS2:
         return out.squeeze().cpu().numpy()
 
     @torch.no_grad()
-    def inference_after_interpolation_batches(self, input_lengths: Tensor, text_mask: Tensor, h_bert: Tensor, h_text: Tensor, style_vector_acoustic: Tensor, style_vector_prosodic: Tensor) -> Tensor:
+    def inference_on_interpolation_vectors(self, interpolation_vectors_full, batch, batch_size, config_data, audio_data):
 
-        h_bert_with_style = self.model.predictor.text_encoder(h_bert, style_vector_acoustic, input_lengths, text_mask)
+        # 1. Get Population
+        interpolation_vectors_batch = interpolation_vectors_full[batch: batch + batch_size]
+        current_batch_size = interpolation_vectors_batch.size(0)
 
-        a_pred = self.predictDuration(h_bert_with_style, input_lengths)
+        # 2. Adjust Interpolation Vectors
+        interpolation_vectors = adjustInterpolationVector(interpolation_vectors_batch, config_data.random_matrix, config_data.subspace_optimization)
+
+        # 3. Prepare Batch Inputs (Expand/Tile Shared Data)
+        input_length = audio_data.input_lengths.expand(current_batch_size)
+        text_mask = audio_data.text_mask.expand(current_batch_size, -1)
+        h_bert = audio_data.h_bert_gt.expand(current_batch_size, -1, -1)
+        style_vector_acoustic = audio_data.style_vector_acoustic.expand(current_batch_size, -1)
+        style_vector_prosodic = audio_data.style_vector_prosodic.expand(current_batch_size, -1)
+
+        # 4. Interpolate Vectors
+        if config_data.mode is AttackMode.NOISE_UNTARGETED or config_data.mode is AttackMode.TARGETED:
+            h_text_mixed = (1.0 - interpolation_vectors) * audio_data.h_text_gt + interpolation_vectors * audio_data.h_text_target
+        else:
+            h_text_mixed = audio_data.h_text_gt + config_data.iv_scalar * interpolation_vectors
+
+
+        h_bert_with_style = self.model.predictor.text_encoder(h_bert, style_vector_acoustic, input_length, text_mask)
+
+        a_pred = self.predict_duration(h_bert_with_style, input_length)
         a_pred = a_pred.to(self.device)
 
-        h_aligned = h_text @ a_pred
+        h_aligned = h_text_mixed @ a_pred
 
         h_bert_with_style_per_frame = h_bert_with_style.transpose(-1, -2) @ a_pred
 
@@ -287,15 +306,15 @@ class StyleTTS2:
             style_vector_prosodic
         )
 
-        return out.squeeze(1).cpu().numpy()
+        return out.squeeze(1).cpu().numpy(), current_batch_size, interpolation_vectors
 
     @torch.no_grad()
     def inference(self, text: str, noise: Tensor, embedding_scale=1, diffusion_steps=5):
 
-        tokens = self.preprocessText(text)
+        tokens = self.preprocess_text(text)
 
         h_text, h_bert_raw, h_bert, input_lengths, text_mask = self.extract_embeddings(tokens)
 
-        style_vector_acoustic, style_vector_prosodic = self.computeStyleVector(noise, h_bert_raw, embedding_scale, diffusion_steps)
+        style_vector_acoustic, style_vector_prosodic = self.compute_style_vector(noise, h_bert_raw, embedding_scale, diffusion_steps)
 
-        return self.inference_after_interpolation_iterative(input_lengths, text_mask, h_bert, h_text, style_vector_acoustic, style_vector_prosodic)
+        return self.inference_on_embedding(input_lengths, text_mask, h_bert, h_text, style_vector_acoustic, style_vector_prosodic)
