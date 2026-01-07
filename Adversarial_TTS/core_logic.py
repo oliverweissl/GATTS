@@ -36,14 +36,21 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
     gen = -1
 
     target_tokens_template = None
+    real_asr_model = None
     if FitnessObjective.WHISPER_PROB in active_objectives:
+
+        if isinstance(asr_model, torch.nn.DataParallel):
+            real_asr_model = asr_model.module
+        else:
+            real_asr_model = asr_model
+
         # Loads Tokenizer
-        tokenizer = get_tokenizer(asr_model.is_multilingual)
+        tokenizer = get_tokenizer(real_asr_model.is_multilingual)
 
         # Converts text to tokens, while adding start and end tokens
         target_ids = list(tokenizer.sot_sequence) + tokenizer.encode(config_data.text_target) + [tokenizer.eot]
 
-        target_tokens_template = torch.tensor([target_ids]).to(asr_model.device)
+        target_tokens_template = torch.tensor([target_ids]).to(device)
 
     for gen in progress_bar:
 
@@ -63,7 +70,7 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
             audio_tensor = whisper.pad_or_trim(audio_tensor)
 
             # 3. Create Log Mel Spectrogram
-            mel_batch = whisper.log_mel_spectrogram(audio_tensor, n_mels=asr_model.dims.n_mels).to(device)
+            mel_batch = whisper.log_mel_spectrogram(audio_tensor, n_mels=real_asr_model.dims.n_mels).to(device)
 
             batch_whisper_fitness_values = [None] * current_batch_size
 
@@ -93,7 +100,7 @@ def run_optimization_generation(config_data, model_data, audio_data, embedding_d
 
                 batch_whisper_fitness_values = vals.detach().cpu().tolist()
 
-            results = whisper.decode(asr_model, mel_batch, options)
+            results = whisper.decode(real_asr_model, mel_batch, options)
 
 
             for i in range(current_batch_size):
