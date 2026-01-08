@@ -135,3 +135,25 @@ class FitnessData:
     mean_fitness: list[float]
     pareto_fitness: list[float]
     total_fitness: list[float]
+
+
+@dataclass
+class StepContext:
+    audio_mixed: torch.Tensor  # [Batch, Time]
+    asr_text: list[str]  # List of strings
+    clean_text: list[str]
+    interpolation_vector: torch.Tensor  # [Batch, Dim]
+    whisper_prob: Optional[list[float]] = None
+
+    def get_item(self, index: int):
+        """Helper to extract a single-item context from a batch."""
+        return StepContext(
+            audio_mixed=self.audio_mixed[index],
+            asr_text=self.asr_text[index],
+            clean_text=self.clean_text[index],
+            interpolation_vector=self.interpolation_vector[index],
+            whisper_prob=self.whisper_prob[index] if self.whisper_prob else None
+        )
+
+    def __len__(self):
+        return len(self.asr_text)
