@@ -102,31 +102,50 @@ class RunLogger:
 
         f = np.array([c.fitness for c in candidates])
 
+        # DEBUG: Print candidate fitness values and thresholds
+        print(f"\n[DEBUG _select_best_candidate]")
+        print(f"  Number of candidates: {len(candidates)}")
+        print(f"  Active objectives: {[obj.name for obj in self.config.active_objectives]}")
+        print(f"  Thresholds: {self.config.thresholds}")
+        print(f"  Threshold keys type: {[type(k) for k in self.config.thresholds.keys()]}")
+        print(f"  Active obj types: {[type(obj) for obj in self.config.active_objectives]}")
+        for idx, c in enumerate(candidates):
+            print(f"  Candidate {idx} fitness: {c.fitness}")
+
         # 1. Identify which candidates satisfy ALL thresholds
         satisfied_mask = np.ones(len(candidates), dtype=bool)
 
         if self.config.thresholds:
             for i, obj in enumerate(self.config.active_objectives):
+                print(f"  Checking obj {obj} (i={i}) in thresholds: {obj in self.config.thresholds}")
                 if obj in self.config.thresholds:
                     limit = self.config.thresholds[obj]
+                    col_values = f[:, i]
+                    col_satisfied = col_values <= limit
+                    print(f"    limit={limit}, values={col_values}, satisfied={col_satisfied}")
                     # Assuming fitness is minimization (Lower is better)
-                    satisfied_mask &= (f[:, i] <= limit)
+                    satisfied_mask &= col_satisfied
 
         # 2. Logic: If some satisfy thresholds, only pick from those.
         # Otherwise, pick from everyone (fallback).
+        print(f"  Final satisfied_mask: {satisfied_mask}")
         if np.any(satisfied_mask):
             eligible_indices = np.where(satisfied_mask)[0]
             eligible_fitness = f[satisfied_mask]
+            print(f"  Using {len(eligible_indices)} candidates that meet all thresholds")
         else:
             eligible_indices = np.arange(len(candidates))
             eligible_fitness = f
+            print(f"  FALLBACK: No candidates meet all thresholds, using all {len(eligible_indices)}")
 
         # 3. From the eligible ones, find the Knee Point (closeness to origin)
         # We normalize here to ensure one objective doesn't dominate the distance
         norms = np.linalg.norm(eligible_fitness, axis=1)
         best_local_idx = np.argmin(norms)
 
-        return candidates[eligible_indices[best_local_idx]]
+        selected = candidates[eligible_indices[best_local_idx]]
+        print(f"  Selected candidate index: {eligible_indices[best_local_idx]}, fitness: {selected.fitness}")
+        return selected
 
     def _run_final_inference(self, best_candidate):
 
