@@ -26,12 +26,12 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ### Python Script (Recommended)
 ```bash
-python Scripts/adversarial_tts_classes.py [OPTIONS]
+python Scripts/adversarial_tts.py [OPTIONS]
 ```
 
 ### Jupyter Notebooks
-- Local notebook: [Scripts/adversarial_tts_classes.ipynb](Scripts/adversarial_tts_classes.ipynb)
-- Google Colab: [Scripts/adversarial_tts_classes_colab.ipynb](Scripts/adversarial_tts_classes_colab.ipynb)
+- Local notebook: [Scripts/adversarial_tts_classes.ipynb](Scripts/adversarial_tts.ipynb)
+- Google Colab: [Scripts/adversarial_tts_classes_colab.ipynb](Scripts/adversarial_tts_colab_old.ipynb)
 
 
 ## CLI Arguments
@@ -119,7 +119,7 @@ python Scripts/adversarial_tts_classes.py [OPTIONS]
 
 ### Basic Targeted Attack
 ```bash
-python Scripts/adversarial_tts_classes.py \
+python Scripts/adversarial_tts.py \
     --ground_truth_text "Hello world" \
     --target_text "Goodbye world" \
     --mode TARGETED \
@@ -130,7 +130,7 @@ python Scripts/adversarial_tts_classes.py \
 
 ### Untargeted Attack with Early Stopping
 ```bash
-python Scripts/adversarial_tts_classes.py \
+python Scripts/adversarial_tts.py \
     --ground_truth_text "The quick brown fox" \
     --mode UNTARGETED \
     --ACTIVE_OBJECTIVES PESQ WER_GT UTMOS \
@@ -140,7 +140,7 @@ python Scripts/adversarial_tts_classes.py \
 
 ### Multi-Objective with Subspace Optimization
 ```bash
-python Scripts/adversarial_tts_classes.py \
+python Scripts/adversarial_tts.py \
     --ground_truth_text "Sample text" \
     --target_text "Different text" \
     --ACTIVE_OBJECTIVES PESQ WHISPER_PROB L2 \

@@ -7,7 +7,7 @@ This script uses the refactored class-based architecture:
 - RunLogger: Handles all output and logging (called separately)
 
 Usage:
-    python adversarial_tts_classes.py --ground_truth_text "Hello world" --target_text "Goodbye"
+    python adversarial_tts.py --ground_truth_text "Hello world" --target_text "Goodbye"
 """
 
 import torch
