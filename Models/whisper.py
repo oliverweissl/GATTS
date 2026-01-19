@@ -18,14 +18,8 @@ class Whisper:
 
         # 4. Run ASR decoding (without_timestamps reduces hallucination on padded silence)
         # temperature=0 forces greedy decoding for deterministic results
-        # Disable fallback thresholds to prevent retry-with-randomness on adversarial audio
-        decode_options = whisper.DecodingOptions(
-            without_timestamps=True,
-            temperature=0,
-            compression_ratio_threshold=None,
-            logprob_threshold=None,
-            no_speech_threshold=None,
-        )
+        # Note: fallback thresholds only apply to whisper.transcribe(), not whisper.decode()
+        decode_options = whisper.DecodingOptions(without_timestamps=True, temperature=0)
         results = whisper.decode(self.model, mel_batch, decode_options)
 
         # 5. Process ASR results (handle single vs batch)
