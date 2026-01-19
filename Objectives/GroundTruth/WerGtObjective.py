@@ -51,7 +51,7 @@ class WerGtObjective(BaseObjective):
                 scores.append(1.0)  # Penalize invalid
                 continue
 
-            if len(asr_text) > len(self.text_gt):
+            if len(asr_text.split()) > len(self.text_gt.split()):
                 raw_wer = jiwer.wer(
                     asr_text,
                     self.text_gt,
