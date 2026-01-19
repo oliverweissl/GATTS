@@ -2,13 +2,10 @@ import torch
 import torch.nn as nn
 from huggingface_hub import hf_hub_download
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class UtmosObjective(BaseObjective):
-    objective_type = FitnessObjective.UTMOS
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -42,12 +39,12 @@ class UtmosObjective(BaseObjective):
     def supports_batching(self):
         return True
 
-    def _calculate_logic(self, context: StepContext):
+    def _calculate_logic(self, context: ObjectiveContext):
         """
         Returns a LIST of scores (one for each item in the batch).
         """
         # Prepare Tensor
-        audio_tensor = torch.as_tensor(context.audio_mixed, dtype=torch.float32, device=self.device)
+        audio_tensor = torch.as_tensor(context.audio_mixed_batch, dtype=torch.float32, device=self.device)
 
         if audio_tensor.dim() == 1:
             audio_tensor = audio_tensor.unsqueeze(0)

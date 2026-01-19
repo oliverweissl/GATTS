@@ -22,8 +22,8 @@ from typing import List, Dict
 
 from Models.styletts2 import StyleTTS2
 from Datastructures.dataclass import ModelData, StepContext
-from Datastructures.enum import FitnessObjective, AttackMode
-from Objectives.ObjectiveManager import ObjectiveManager
+from Datastructures.enum import AttackMode
+from Objectives.FitnessObjective import FitnessObjective
 
 
 @dataclass

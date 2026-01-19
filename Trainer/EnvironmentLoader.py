@@ -6,40 +6,37 @@ This module handles:
 2. Configuration parsing and validation
 3. Required model loading (TTS, ASR)
 4. Audio data generation (GT, target)
-5. Optimizer initialization
-6. ObjectiveManager creation (objectives lazy-load their own models)
+5. Objective initialization
 """
 from __future__ import annotations
 
 import torch
-import whisper
 import numpy as np
 
 # Local imports
 from Models.styletts2 import StyleTTS2
+from Models.whisper import Whisper
 from Trainer.VectorManipulator import add_numbers_pattern, generate_similar_noise
 
 # Import dataclasses and enums
-from Datastructures.dataclass import ModelData, ConfigData, AudioEmbeddingData
-from Datastructures.enum import FitnessObjective, AttackMode
-
-# Import ObjectiveManager and registry
-from Objectives.ObjectiveManager import ObjectiveManager
+from Datastructures.dataclass import ModelData, ConfigData, AudioEmbeddingData, ModelEmbeddingData
+from Objectives.FitnessObjective import FitnessObjective
+from Datastructures.enum import AttackMode
 from Objectives.base import BaseObjective
 
+
 class EnvironmentLoader:
+
     def __init__(self, device: str):
         self.device = device
-
-        # Ensure all objectives are registered, then get their order
-        self.objective_order: list[FitnessObjective] = BaseObjective.get_all_registered_enums()
 
     def initialize(self, args):
         """
         Entry point to setup the full experimental environment.
         Parses arguments and initializes all components.
 
-        Returns: (config, model_data, audio_data, embedding_data, objective_manager)
+        Returns: (config, tts_model, asr_model, audio_gt, audio_target,
+                  audio_embedding_gt, audio_embedding_target, objectives)
         """
 
         # 1. Parse arguments and create ConfigData
@@ -52,33 +49,61 @@ class EnvironmentLoader:
         # 3. Audio Data
         audio_gt, audio_target, audio_embedding_gt, audio_embedding_target = self.generate_audio_data(config_data.mode, config_data.text_gt, config_data.text_target, tts_model)
 
-        # 4. Initialize Objective Manager
-        objective_manager = ObjectiveManager(
+        # 4. Initialize Objectives
+        objectives = self.initialize_objectives(
+            active_objectives=config_data.active_objectives,
             model_data=ModelData(tts_model=tts_model, asr_model=asr_model),
-            device=self.device,
             text_gt=config_data.text_gt,
             text_target=config_data.text_target,
             mode=config_data.mode,
             audio_gt=audio_gt,
-            style_vector_acoustic=audio_embedding_gt.style_vector_acoustic,
-            style_vector_prosodic=audio_embedding_gt.style_vector_prosodic
         )
 
-        # 5. Load model for each objective and compute embeddings
-        objective_manager.initialize_objectives(config_data.active_objectives)
+        return (config_data, tts_model, asr_model, audio_gt, audio_target,
+                audio_embedding_gt, audio_embedding_target, objectives)
 
-        return config_data, tts_model, asr_model, audio_gt, audio_target, audio_embedding_gt, audio_embedding_target, objective_manager
+    def initialize_objectives(
+        self,
+        active_objectives: list[FitnessObjective],
+        model_data: ModelData,
+        text_gt: str,
+        text_target: str,
+        mode: AttackMode,
+        audio_gt: torch.Tensor,
+    ) -> dict[FitnessObjective, BaseObjective]:
+        """
+        Initialize objective instances from enum values.
+
+        Returns dict mapping FitnessObjective enum -> objective instance.
+        """
+        embedding_data = ModelEmbeddingData()
+        objectives = {}
+
+        for obj_enum in active_objectives:
+            try:
+                # obj_enum.value is the objective class
+                objective = obj_enum.value(
+                    model_data=model_data,
+                    device=self.device,
+                    embedding_data=embedding_data,
+                    text_gt=text_gt,
+                    text_target=text_target,
+                    mode=mode,
+                    audio_gt=audio_gt,
+                )
+                objectives[obj_enum] = objective
+                print(f"Initialized {obj_enum.name} (batching={objective.supports_batching})")
+            except Exception as e:
+                raise ValueError(f"Failed to initialize {obj_enum.name}: {e}") from e
+
+        return objectives
 
     # =========================================================================
     # Helper Methods
     # =========================================================================
 
     def load_configuration(self, args) -> ConfigData:
-        """Parse command-line arguments and create validated ConfigData.
-
-        Args:
-            args: Optional list of CLI args. Pass [] for defaults, None for sys.argv.
-        """
+        """Parse command-line arguments and create validated ConfigData."""
 
         random_matrix = torch.from_numpy(
             np.random.rand(args.size_per_phoneme, 512)
@@ -101,8 +126,8 @@ class EnvironmentLoader:
         if not active_objectives_raw:
             raise ValueError("Error: No valid active_objectives selected.")
 
-        # Set Objectives in correct order
-        active_objectives = [obj for obj in self.objective_order if obj in active_objectives_raw]
+        # Set Objectives in correct order (enum definition order)
+        active_objectives = [obj for obj in FitnessObjective if obj in active_objectives_raw]
 
         # Parse thresholds
         thresholds = {}
@@ -137,10 +162,10 @@ class EnvironmentLoader:
 
     def load_required_models(self):
         print("Loading TTS Model (StyleTTS2)...")
-        tts = StyleTTS2()
+        tts = StyleTTS2(device=self.device)
 
         print("Loading ASR Model (Whisper)...")
-        asr = whisper.load_model("tiny", device=self.device)
+        asr = Whisper(device=self.device)
 
         return tts, asr
 
@@ -165,7 +190,12 @@ class EnvironmentLoader:
             style_ac_target = generate_similar_noise(audio_embedding_data_gt.style_vector_acoustic)
             style_pro_target = generate_similar_noise(audio_embedding_data_gt.style_vector_prosodic)
 
-            audio_embedding_data_target = AudioEmbeddingData(audio_embedding_data_gt.input_length, audio_embedding_data_gt.text_mask, h_bert_target, h_text_target, style_ac_target, style_pro_target)
+            audio_embedding_data_target = AudioEmbeddingData(
+                audio_embedding_data_gt.input_length,
+                audio_embedding_data_gt.text_mask,
+                h_bert_target, h_text_target,
+                style_ac_target, style_pro_target
+            )
 
         # Run inference for ground-truth and target
         audio_gt = tts.inference_on_embedding(audio_embedding_data_gt).flatten()

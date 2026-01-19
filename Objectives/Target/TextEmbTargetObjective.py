@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sentence_transformers import SentenceTransformer
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import AttackMode, FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
+from Datastructures.enum import AttackMode
 
 
 class TextEmbTargetObjective(BaseObjective):
@@ -19,8 +19,6 @@ class TextEmbTargetObjective(BaseObjective):
 
     NOTE: This objective requires TARGETED mode.
     """
-    objective_type = FitnessObjective.TEXT_EMB_TARGET
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -55,9 +53,9 @@ class TextEmbTargetObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """Process entire batch at once."""
-        asr_texts = context.clean_text
+        asr_texts = context.asr_texts
         if isinstance(asr_texts, str):
             asr_texts = [asr_texts]
 

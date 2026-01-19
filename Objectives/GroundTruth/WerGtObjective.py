@@ -1,7 +1,6 @@
 import jiwer
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class WerGtObjective(BaseObjective):
@@ -17,8 +16,6 @@ class WerGtObjective(BaseObjective):
          0 = 0% similarity / very different from GT (good for attack)
          1 = 100% similarity / same as GT (bad for attack)
     """
-    objective_type = FitnessObjective.WER_GT
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -40,12 +37,12 @@ class WerGtObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """
         Batched WER calculation.
         Returns list of scores in range (0, 1) where 0 = different (good), 1 = same (bad).
         """
-        asr_texts = context.clean_text  # List of strings
+        asr_texts = context.asr_texts
 
         scores = []
         for asr_text in asr_texts:

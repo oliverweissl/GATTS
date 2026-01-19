@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import List, Set, Dict, Optional, Any
+from typing import List, Dict, Optional, Any
 import torch
-from Datastructures.enum import AttackMode, FitnessObjective
+from Datastructures.enum import AttackMode
 
 @dataclass
 class ConfigData:
@@ -24,8 +24,8 @@ class ConfigData:
 
     # --- Logic Constants ---
     mode: AttackMode
-    active_objectives: List[FitnessObjective]
-    thresholds: Dict[FitnessObjective, float]
+    active_objectives: List["FitnessObjective"]
+    thresholds: Dict["FitnessObjective", float]
 
     # --- Subspace Optimization ---
     subspace_optimization: bool
@@ -138,12 +138,10 @@ class FitnessData:
     pareto_fitness: list[float]
     metric_fitness: list[float]
 
-
 @dataclass
 class StepContext:
     audio_mixed: torch.Tensor  # [Batch, Time]
-    asr_text: list[str]  # List of strings
-    clean_text: list[str]
+    asr_text: list[str]
     interpolation_vector: torch.Tensor  # [Batch, Dim]
     mel_batch: Optional[torch.Tensor] = None  # [Batch, n_mels, Time] - for objectives needing mel spectrogram
 
@@ -152,10 +150,32 @@ class StepContext:
         return StepContext(
             audio_mixed=self.audio_mixed[index],
             asr_text=self.asr_text[index],
-            clean_text=self.clean_text[index],
             interpolation_vector=self.interpolation_vector[index],
             mel_batch=self.mel_batch[index:index+1] if self.mel_batch is not None else None
         )
 
     def __len__(self):
         return len(self.asr_text)
+
+@dataclass
+class ObjectiveContext:
+    """
+    Simplified context for objective evaluation.
+    Contains only the data needed by objectives.
+    """
+    audio_mixed_batch: torch.Tensor  # [Batch, Time]
+    asr_texts: list[str]
+    interpolation_vectors: torch.Tensor  # [Batch, Dim]
+    mel_batch: Optional[torch.Tensor] = None  # [Batch, n_mels, Time]
+
+    def get_item(self, index: int) -> "ObjectiveContext":
+        """Extract a single-item context from a batch."""
+        return ObjectiveContext(
+            audio_mixed_batch=self.audio_mixed_batch[index],
+            asr_texts=self.asr_texts[index],
+            interpolation_vectors=self.interpolation_vectors[index],
+            mel_batch=self.mel_batch[index:index+1] if self.mel_batch is not None else None
+        )
+
+    def __len__(self) -> int:
+        return len(self.asr_texts)

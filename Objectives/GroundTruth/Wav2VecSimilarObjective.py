@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import Wav2Vec2Model, Wav2Vec2Processor
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class Wav2VecSimilarObjective(BaseObjective):
@@ -18,8 +17,6 @@ class Wav2VecSimilarObjective(BaseObjective):
     We convert to fitness: 0 = same as GT (good), 1 = different (bad).
     (We want to sound SIMILAR to ground-truth)
     """
-    objective_type = FitnessObjective.WAV2VEC_SIMILAR
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -62,9 +59,9 @@ class Wav2VecSimilarObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """Process entire batch at once."""
-        audio_mixed = context.audio_mixed  # [Batch, Time] or [Time]
+        audio_mixed = context.audio_mixed_batch  # [Batch, Time] or [Time]
 
         # Ensure batch dimension
         if isinstance(audio_mixed, torch.Tensor):

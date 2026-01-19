@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import Wav2Vec2Model, Wav2Vec2Processor
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import AttackMode, FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
+from Datastructures.enum import AttackMode
 
 
 class Wav2VecDifferentObjective(BaseObjective):
@@ -20,8 +20,6 @@ class Wav2VecDifferentObjective(BaseObjective):
 
     NOTE: This objective requires TARGETED mode.
     """
-    objective_type = FitnessObjective.WAV2VEC_DIFFERENT
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -68,9 +66,9 @@ class Wav2VecDifferentObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """Process entire batch at once."""
-        audio_mixed = context.audio_mixed  # [Batch, Time] or [Time]
+        audio_mixed = context.audio_mixed_batch  # [Batch, Time] or [Time]
 
         # Ensure batch dimension
         if isinstance(audio_mixed, torch.Tensor):

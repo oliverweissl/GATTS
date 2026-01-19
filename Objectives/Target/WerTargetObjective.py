@@ -1,7 +1,6 @@
 import jiwer
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class WerTargetObjective(BaseObjective):
@@ -17,8 +16,6 @@ class WerTargetObjective(BaseObjective):
          0 = 100% similarity / matches target (good for attack)
          1 = 0% similarity / different from target (bad for attack)
     """
-    objective_type = FitnessObjective.WER_TARGET
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -37,12 +34,12 @@ class WerTargetObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """
         Batched WER calculation.
         Returns list of scores in range (0, 1) where 0 = matches target (good), 1 = different (bad).
         """
-        asr_texts = context.clean_text  # List of strings
+        asr_texts = context.asr_texts
 
         scores = []
         for asr_text in asr_texts:

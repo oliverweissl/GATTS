@@ -1,0 +1,30 @@
+import whisper
+import torch
+import string
+import torchaudio.functional as torchaudio_functional
+
+class Whisper:
+    def __init__(self, device=None):
+        self.device = device if device else ('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model = whisper.load_model("tiny", device=self.device)
+
+    def inference(self, audio_batch):
+        # 2. Prepare audio tensors (single conversion from numpy)
+        audio_tensor_asr = torchaudio_functional.resample(audio_batch, 24000, 16000)
+        audio_tensor_asr = whisper.pad_or_trim(audio_tensor_asr)
+
+        # 3. Create Mel spectrogram
+        mel_batch = whisper.log_mel_spectrogram(audio_tensor_asr, n_mels=self.model.dims.n_mels).to(self.device)
+
+        # 4. Run ASR decoding (without_timestamps reduces hallucination on padded silence)
+        decode_options = whisper.DecodingOptions(without_timestamps=True)
+        results = whisper.decode(self.model, mel_batch, decode_options)
+
+        # 5. Process ASR results (handle single vs batch)
+        if not isinstance(results, list):
+            results = [results]
+        asr_texts = [r.text for r in results]
+        # clean_texts = [re.sub(r'[^a-zA-Z\s]', '', t).strip() for t in asr_texts]
+        clean_texts = [t.translate(str.maketrans('', '', string.punctuation)).strip() for t in asr_texts]
+
+        return clean_texts

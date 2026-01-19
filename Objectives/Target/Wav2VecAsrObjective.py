@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import Wav2Vec2Model, Wav2Vec2Processor
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import AttackMode, FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
+from Datastructures.enum import AttackMode
 
 
 class Wav2VecAsrObjective(BaseObjective):
@@ -25,8 +25,6 @@ class Wav2VecAsrObjective(BaseObjective):
     NOTE: This objective does NOT support batching because it needs to
           synthesize audio for each ASR text individually via the TTS model.
     """
-    objective_type = FitnessObjective.WAV2VEC_ASR
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -60,10 +58,10 @@ class Wav2VecAsrObjective(BaseObjective):
         # Cannot batch because TTS synthesis is required per-sample
         return False
 
-    def _calculate_logic(self, context: StepContext) -> float:
+    def _calculate_logic(self, context: ObjectiveContext) -> float:
         """Process single sample (TTS synthesis required)."""
-        audio_mixed = context.audio_mixed
-        asr_text = context.clean_text
+        audio_mixed = context.audio_mixed_batch
+        asr_text = context.asr_texts
 
         # Ensure audio is numpy for processor
         if isinstance(audio_mixed, torch.Tensor):

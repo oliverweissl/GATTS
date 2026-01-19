@@ -138,8 +138,13 @@ class RunLogger:
         return selected
 
     def run_final_inference(self, best_candidate):
+        # Reshape solution to original optimizer shape [1, input_length, size_per_phoneme]
+        input_length = int(self.vector_manipulator.audio_embedding_gt.input_length.detach().cpu().item())
+        size_per_phoneme = self.vector_manipulator.config_data.size_per_phoneme
 
-        interpolation_vector = torch.as_tensor(best_candidate.solution, dtype=torch.float32).view(1, -1, 1).to(self.device)
+        interpolation_vector = torch.as_tensor(
+            best_candidate.solution, dtype=torch.float32
+        ).view(1, input_length, size_per_phoneme).to(self.device)
         current_batch_size, interpolation_vectors, audio_embedding_data = self.vector_manipulator.interpolate(interpolation_vector)
         audio_best = self.tts_model.inference_on_embedding(audio_embedding_data)
 
@@ -148,8 +153,9 @@ class RunLogger:
         else:
             asr_model = self.asr_model
 
-        # 2. Now call transcribe on the unwrapped model
-        asr_text = asr_model.transcribe(audio_best.squeeze())["text"]
+        # 2. Now call transcribe on the unwrapped model (keep batch dim for consistency with training)
+        asr_texts = asr_model.inference(audio_best)
+        asr_text = asr_texts[0] if isinstance(asr_texts, list) else asr_texts
 
         return audio_best, asr_text, audio_embedding_data
 

@@ -2,19 +2,17 @@
 Objectives Module - Modular fitness objective implementations.
 
 Usage:
-    from Datastructures.enum import FitnessObjective
+    from Objectives.FitnessObjectives import FitnessObjective
+    from Datastructures.dataclass import ObjectiveContext
 
-    # Create an objective instance
-    objective = get_objective(
-        FitnessObjective.UTMOS,
-        config=config_data,
-        model_data=model_data,
-        device='cuda',
-        embedding_data=embedding_data
-    )
+    # Instantiate objectives from enum
+    objectives = [
+        obj_enum.value(model_data=model_data, device='cuda', ...)
+        for obj_enum in active_objectives
+    ]
 
-    # Calculate scores for a batch
-    scores = objective.calculate_score(context, audio_data)
+    # Evaluate
+    scores = {type(obj).__name__: obj.calculate_score(context) for obj in objectives}
 """
 
 from Objectives.base import BaseObjective

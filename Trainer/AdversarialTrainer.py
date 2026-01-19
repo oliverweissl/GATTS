@@ -11,19 +11,17 @@ Logging and visualization should be handled separately via RunLogger.
 """
 
 import time
-import string
 import torch
 import numpy as np
-import whisper
-import torchaudio.functional as torchaudio_functional
 from tqdm.auto import tqdm
 
 # Local imports
-from Datastructures.dataclass import AudioData, ConfigData, StepContext
-from Datastructures.enum import FitnessObjective
-from Objectives.ObjectiveManager import ObjectiveManager
+from Datastructures.dataclass import ObjectiveContext
+from Objectives.FitnessObjective import FitnessObjective
+from Objectives.base import BaseObjective
 
 from Trainer.VectorManipulator import VectorManipulator
+
 
 class AdversarialTrainer:
 
@@ -33,7 +31,7 @@ class AdversarialTrainer:
         asr_model,
         active_objectives: list[FitnessObjective],
         thresholds: dict[FitnessObjective, float],
-        objective_manager: ObjectiveManager,
+        objectives: dict[FitnessObjective, BaseObjective],
         vector_manipulator: VectorManipulator,
         device: str
     ):
@@ -42,23 +40,33 @@ class AdversarialTrainer:
         self.asr_model = asr_model.module if isinstance(asr_model, torch.nn.DataParallel) else asr_model
         self.active_objectives = active_objectives
         self.thresholds = thresholds
-        self.objective_manager = objective_manager
-        self.vector_manipulator=vector_manipulator
+        self.objectives = objectives
+        self.vector_manipulator = vector_manipulator
         self.device = device
+
+    def evaluate_batch(self, context: ObjectiveContext) -> dict[FitnessObjective, list[float]]:
+        """Evaluate all objectives on a batch."""
+        scores = {}
+        for obj_enum, objective in self.objectives.items():
+            try:
+                scores[obj_enum] = objective.calculate_score(context)
+            except Exception as e:
+                print(f"[ERROR] {obj_enum.name} evaluation failed: {e}")
+        return scores
 
     def run_full_iteration(self, optimizer, num_generations, pop_size, batch_size) -> tuple[list[np.ndarray], int, float]:
         """
-            Run a single optimization cycle through all generations.
+        Run a single optimization cycle through all generations.
 
-            Initializes a fresh optimizer, runs until generations complete or
-            threshold is met, and returns the results.
+        Initializes a fresh optimizer, runs until generations complete or
+        threshold is met, and returns the results.
 
-            Returns:
-                tuple: (history, generations_run, total_inference_time)
-                    - history: List of matrices (one per generation)
-                    - generations_run: Integer count of generations completed
-                    - total_inference_time: Float seconds
-            """
+        Returns:
+            tuple: (history, generations_run, total_inference_time)
+                - history: List of matrices (one per generation)
+                - generations_run: Integer count of generations completed
+                - total_inference_time: Float seconds
+        """
 
         fitness_history = []
         gen = -1
@@ -164,43 +172,25 @@ class AdversarialTrainer:
         current_batch_size, interpolation_vectors, audio_embedding_data_mixed = self.vector_manipulator.interpolate(interpolation_vectors_batch)
         audio_mixed_batch = self.tts_model.inference_on_embedding(audio_embedding_data_mixed)
 
-        # 2. Prepare audio tensors (single conversion from numpy)
-        audio_tensor_asr = torchaudio_functional.resample(audio_mixed_batch, 24000, 16000)
-        audio_tensor_asr = whisper.pad_or_trim(audio_tensor_asr)
+        # 2. ASR Inference
+        asr_texts = self.asr_model.inference(audio_mixed_batch)
 
-        # 3. Create Mel spectrogram
-        mel_batch = whisper.log_mel_spectrogram(audio_tensor_asr, n_mels=self.asr_model.dims.n_mels).to(self.device)
-
-        # 4. Run ASR decoding (without_timestamps reduces hallucination on padded silence)
-        decode_options = whisper.DecodingOptions(without_timestamps=True)
-        results = whisper.decode(self.asr_model, mel_batch, decode_options)
-
-        # 5. Process ASR results
-        asr_texts = [r.text for r in results]
-        # clean_texts = [re.sub(r'[^a-zA-Z\s]', '', t).strip() for t in asr_texts]
-        clean_texts = [t.translate(str.maketrans('', '', string.punctuation)).strip() for t in asr_texts]
-
-        # 6. Create StepContext
-        context = StepContext(
-            audio_mixed=audio_mixed_batch,
-            asr_text=asr_texts,
-            clean_text=clean_texts,
-            interpolation_vector=interpolation_vectors,
-            mel_batch=mel_batch
+        # 3. Create context and evaluate objectives
+        context = ObjectiveContext(
+            audio_mixed_batch=audio_mixed_batch,
+            asr_texts=asr_texts,
+            interpolation_vectors=interpolation_vectors,
         )
-
-        # 7. Evaluate objectives
-        # batch_scores is dict: {FitnessObjective.WER: [0.1, 0.2], ...}
-        batch_scores_dict = self.objective_manager.evaluate_batch(context)
+        batch_scores_dict = self.evaluate_batch(context)
 
         end_time = time.time()
 
-        # 9. Collect scores and check early stopping (vectorized)
+        # 4. Collect scores and check early stopping (vectorized)
         # Create garbage mask for samples with invalid ASR output
         batch_scores_list = []
 
         # Garbage Mask against silence trap
-        garbage_mask = np.array([len(t) < 2 for t in clean_texts], dtype=bool)
+        garbage_mask = np.array([len(t) < 2 for t in asr_texts], dtype=bool)
 
         # Build score matrix: [batch_size, num_objectives]
         score_matrix = np.zeros((current_batch_size, len(self.active_objectives)), dtype=np.float32)

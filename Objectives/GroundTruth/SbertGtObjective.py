@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 from sentence_transformers import SentenceTransformer, util
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class SbertGtObjective(BaseObjective):
@@ -17,8 +16,6 @@ class SbertGtObjective(BaseObjective):
     We convert to fitness: 0 = different from GT (good), 1 = same as GT (bad).
     (We want to move AWAY from ground-truth)
     """
-    objective_type = FitnessObjective.SBERT_GT
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -49,9 +46,9 @@ class SbertGtObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """Process entire batch at once."""
-        asr_texts = context.clean_text
+        asr_texts = context.asr_texts
         if isinstance(asr_texts, str):
             asr_texts = [asr_texts]
 

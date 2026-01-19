@@ -1,7 +1,6 @@
 import torch
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class L1Objective(BaseObjective):
@@ -14,8 +13,6 @@ class L1Objective(BaseObjective):
 
     Lower is better (we want to stay close to GT).
     """
-    objective_type = FitnessObjective.L1
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -23,13 +20,14 @@ class L1Objective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
-        iv = context.interpolation_vector
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
+        iv = context.interpolation_vectors
 
         if iv.dim() == 1:
             iv = iv.unsqueeze(0)
 
         # L1 = mean(|IV|) per sample
-        l1_values = iv.abs().mean(dim=1)
+        # Flatten all non-batch dimensions to handle both 2D [batch, dim] and 3D [batch, dim1, dim2]
+        l1_values = iv.abs().flatten(start_dim=1).mean(dim=1)
 
         return l1_values.cpu().tolist()

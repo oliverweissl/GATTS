@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from sentence_transformers import SentenceTransformer, util
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import AttackMode, FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
+from Datastructures.enum import AttackMode
 
 
 class SbertTargetObjective(BaseObjective):
@@ -18,8 +18,6 @@ class SbertTargetObjective(BaseObjective):
 
     NOTE: This objective requires TARGETED mode.
     """
-    objective_type = FitnessObjective.SBERT_TARGET
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -54,9 +52,9 @@ class SbertTargetObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """Process entire batch at once."""
-        asr_texts = context.clean_text
+        asr_texts = context.asr_texts
         if isinstance(asr_texts, str):
             asr_texts = [asr_texts]
 

@@ -1,45 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import ClassVar, Type, Optional, TYPE_CHECKING
+from typing import Optional
 import torch
 
-if TYPE_CHECKING:
-    from Datastructures.enum import FitnessObjective, AttackMode
+from Datastructures.enum import AttackMode
 
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class BaseObjective(ABC):
     """
     Abstract base class for all fitness objectives.
-
-    Subclasses must define `objective_type` as a class variable to auto-register:
-        class MyObjective(BaseObjective):
-            objective_type = FitnessObjective.MY_OBJECTIVE
     """
-
-    # Class-level registry: maps FitnessObjective enum -> objective class
-    _registry: ClassVar[dict["FitnessObjective", Type["BaseObjective"]]] = {}
-
-    # Each subclass must define this (set to None in base to allow abstract usage)
-    objective_type: ClassVar["FitnessObjective"] = None
-
-    def __init_subclass__(cls, **kwargs):
-        """Auto-register subclasses that define objective_type."""
-        super().__init_subclass__(**kwargs)
-        if cls.objective_type is not None:
-            BaseObjective._registry[cls.objective_type] = cls
-
-    @classmethod
-    def get_class(cls, objective_enum: "FitnessObjective") -> Type["BaseObjective"]:
-        """Get the objective class for a given enum value."""
-        if objective_enum not in cls._registry:
-            raise ValueError(f"No objective registered for {objective_enum}")
-        return cls._registry[objective_enum]
-
-    @classmethod
-    def get_all_registered_enums(cls) -> list["FitnessObjective"]:
-        """Returns all registered FitnessObjective enums."""
-        return list(cls._registry.keys())
 
     def __init__(
         self,
@@ -50,8 +21,6 @@ class BaseObjective(ABC):
         text_target: Optional[str] = None,
         mode: Optional["AttackMode"] = None,
         audio_gt: Optional[torch.Tensor] = None,
-        style_vector_acoustic: Optional[torch.Tensor] = None,
-        style_vector_prosodic: Optional[torch.Tensor] = None,
     ):
         self.model_data = model_data
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
@@ -60,8 +29,6 @@ class BaseObjective(ABC):
         self.text_target = text_target
         self.mode = mode
         self.audio_gt = audio_gt
-        self.style_vector_acoustic = style_vector_acoustic
-        self.style_vector_prosodic = style_vector_prosodic
 
     @property
     def name(self):
@@ -76,35 +43,36 @@ class BaseObjective(ABC):
         """
         return False
 
-    def calculate_score(self, context: StepContext) -> list[float]:
+    def calculate_score(self, context: ObjectiveContext) -> list[float]:
         """
         Public API. ALWAYS returns a list of floats, even if batch_size=1.
+
+        Args:
+            context: ObjectiveContext containing audio_mixed_batch, asr_texts,
+                     interpolation_vectors, and optional mel_batch
         """
+        batch_size = len(context)
+
         # --- PATH A: Batch Optimized (GPU Models) ---
         if self.supports_batching:
             try:
-                # We trust the child class to handle the whole batch at once
                 return self._calculate_logic(context)
             except Exception as e:
                 print(f"Error in {self.name} (Batch Mode): {e}")
-                # Return a list of 1.0s equal to the batch size as fail-safe
-                return [1.0] * len(context.asr_text)
+                return [1.0] * batch_size
 
         # --- PATH B: Single Item Loop (CPU/Legacy Models) ---
         else:
             scores = []
-            # We assume context has a __len__ and get_item method
-            for i in range(len(context)):
+            for i in range(batch_size):
                 try:
                     single_ctx = context.get_item(i)
 
                     # Run safety checks on single item
-                    if not single_ctx.clean_text or len(
-                            single_ctx.clean_text) < 2 or single_ctx.audio_mixed.numel() == 0:
+                    if not single_ctx.asr_texts or len(single_ctx.asr_texts) < 2 or single_ctx.audio_mixed_batch.numel() == 0:
                         scores.append(1.0)
                         continue
 
-                    # Call logic on ONE item
                     val = self._calculate_logic(single_ctx)
                     scores.append(float(val))
 
@@ -115,8 +83,15 @@ class BaseObjective(ABC):
             return scores
 
     @abstractmethod
-    def _calculate_logic(self, context: StepContext):
+    def _calculate_logic(self, context: ObjectiveContext):
         """
         The specific math for this objective.
+
+        Args:
+            context: ObjectiveContext containing:
+                - audio_mixed_batch: [Time] for single / [Batch, Time] for batch
+                - asr_texts: single string / list of strings
+                - interpolation_vectors: [Dim] for single / [Batch, Dim] for batch
+                - mel_batch: Optional mel spectrogram tensor
         """
         pass

@@ -4,13 +4,10 @@ import torch.nn.functional as F
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
 from Objectives.base.BaseObjective import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class PPLObjective(BaseObjective):
-    objective_type = FitnessObjective.PPL
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -52,9 +49,9 @@ class PPLObjective(BaseObjective):
     def supports_batching(self):
         return True
 
-    def _calculate_logic(self, context: StepContext):
+    def _calculate_logic(self, context: ObjectiveContext):
         # 1. Prepare Inputs
-        texts = context.asr_text
+        texts = context.asr_texts
         if isinstance(texts, str): texts = [texts]
 
         inputs = self.tokenizer(

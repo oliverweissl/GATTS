@@ -13,7 +13,8 @@ Usage:
 import torch
 import os
 import argparse
-from Datastructures.enum import AttackMode, FitnessObjective
+from Datastructures.enum import AttackMode
+from Objectives.FitnessObjective import FitnessObjective
 import matplotlib.pyplot as plt
 
 from Trainer import VectorManipulator
@@ -33,9 +34,6 @@ from helper import write_run_summary
 # Import Pymoo components
 from Optimizer.pymoo_optimizer import PymooOptimizer
 from pymoo.algorithms.moo.nsga2 import NSGA2
-
-# Import ObjectiveManager and registry
-from Objectives.ObjectiveManager import ObjectiveManager
 
 from Datastructures.dataclass import ModelData
 
@@ -82,23 +80,20 @@ def main():
 
     audio_gt, audio_target, audio_embedding_gt, audio_embedding_target = loader.generate_audio_data(config_data.mode, config_data.text_gt, config_data.text_target, tts_model)
 
-    # 2. Initialize Objective Manager
-    objective_manager = ObjectiveManager(
-        model_data=ModelData(tts_model=tts_model, asr_model=asr_model),
+    # 4. Initialize Objectives
+    objectives = loader.initialize_objectives(
         active_objectives=config_data.active_objectives,
-        device=device,
+        model_data=ModelData(tts_model=tts_model, asr_model=asr_model),
         text_gt=config_data.text_gt,
         text_target=config_data.text_target,
         mode=config_data.mode,
         audio_gt=audio_gt,
-        style_vector_acoustic=audio_embedding_gt.style_vector_acoustic,
-        style_vector_prosodic=audio_embedding_gt.style_vector_prosodic
     )
 
     vector_manipulator = VectorManipulator(audio_embedding_gt, audio_embedding_target.h_text, config_data)
 
     # 3. Create Trainer and Logger
-    trainer = AdversarialTrainer(tts_model, asr_model, config_data.active_objectives, config_data.thresholds, objective_manager, vector_manipulator, device)
+    trainer = AdversarialTrainer(tts_model, asr_model, config_data.active_objectives, config_data.thresholds, objectives, vector_manipulator, device)
     logger = RunLogger(config_data.active_objectives, tts_model, asr_model, vector_manipulator, device)
 
     # 4. Run optimization loops

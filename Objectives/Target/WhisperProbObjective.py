@@ -1,8 +1,7 @@
 import torch
 from whisper.tokenizer import get_tokenizer
 from Objectives.base import BaseObjective
-from Datastructures.dataclass import ModelData, StepContext, ModelEmbeddingData
-from Datastructures.enum import FitnessObjective
+from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
 class WhisperProbObjective(BaseObjective):
@@ -19,8 +18,6 @@ class WhisperProbObjective(BaseObjective):
     0 = ASR output matches target perfectly (good)
     1 = ASR output very different from target (bad)
     """
-    objective_type = FitnessObjective.WHISPER_PROB
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -50,19 +47,19 @@ class WhisperProbObjective(BaseObjective):
     def supports_batching(self) -> bool:
         return True
 
-    def _calculate_logic(self, context: StepContext) -> list[float]:
+    def _calculate_logic(self, context: ObjectiveContext) -> list[float]:
         """
         Computes the whisper probability fitness values from the mel spectrogram.
 
         Args:
-            context: StepContext containing mel_batch
+            context: ObjectiveContext containing mel_batch
 
         Returns:
             List of fitness values (0 = best, 1 = worst)
         """
         if context.mel_batch is None:
             raise ValueError(
-                "WhisperProbObjective requires mel_batch in StepContext. "
+                "WhisperProbObjective requires mel_batch in ObjectiveContext. "
                 "Ensure the main loop provides mel spectrogram before calling this objective."
             )
 
