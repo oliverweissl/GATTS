@@ -154,7 +154,7 @@ class RunLogger:
             asr_model = self.asr_model
 
         # 2. Now call transcribe on the unwrapped model (keep batch dim for consistency with training)
-        asr_texts = asr_model.inference(audio_best)
+        asr_texts, _ = asr_model.inference(audio_best)
         asr_text = asr_texts[0] if isinstance(asr_texts, list) else asr_texts
 
         return audio_best, asr_text, audio_embedding_data
