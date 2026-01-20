@@ -11,12 +11,16 @@ class WhisperProbObjective(BaseObjective):
 
     This objective computes:
     - Cross-entropy loss between predicted logits and target tokens
-    - Converted to probability via exp(-loss)
-    - Inverted to fitness: 1 - prob
+    - Scaled via sigmoid: loss / (1 + loss)
 
-    Values: [0, 1]
+    Using sigmoid-scaled loss instead of probability (1 - exp(-loss)) provides
+    better gradient signal for genetic algorithms. Probability compresses
+    differences at extremes (e.g., loss 5→3 is only 0.99→0.95 in prob space),
+    while sigmoid scaling preserves the magnitude of improvements.
+
+    Values: [0, 1)
     0 = ASR output matches target perfectly (good)
-    1 = ASR output very different from target (bad)
+    →1 = ASR output very different from target (bad)
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -86,8 +90,8 @@ class WhisperProbObjective(BaseObjective):
         # Average loss over sentence length
         sample_losses = raw_losses.reshape(batch_size, -1).mean(dim=1)
 
-        # Convert to fitness score (0.0 = best, 1.0 = worst)
-        probs = torch.exp(-sample_losses)
-        vals = 1.0 - probs
+        # Sigmoid-scaled loss: loss / (1 + loss)
+        # Bounded [0, 1), preserves magnitude of improvements better than probability
+        vals = sample_losses / (1.0 + sample_losses)
 
         return vals.detach().cpu().tolist()
