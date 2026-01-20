@@ -115,30 +115,31 @@ class EnvironmentLoader:
         except KeyError:
             raise ValueError(f"Invalid mode '{args.mode}'. Available modes: {[m.name for m in AttackMode]}")
 
-        # Validate Objective Enums
+        # Parse combined objectives format (e.g., "PESQ=0.3, WER_GT=0.5")
         active_objectives_raw = set()
-        for obj_name in args.ACTIVE_OBJECTIVES:
-            try:
-                active_objectives_raw.add(FitnessObjective[obj_name])
-            except KeyError:
-                raise ValueError(f"'{obj_name}' invalid objective.")
+        thresholds = {}
+
+        for entry in args.objectives.split(","):
+            entry = entry.strip()
+            if "=" in entry:
+                obj_name, val_str = entry.split("=")
+                obj_name = obj_name.strip().upper()
+                try:
+                    obj_enum = FitnessObjective[obj_name]
+                    active_objectives_raw.add(obj_enum)
+                    thresholds[obj_enum] = float(val_str.strip())
+                except KeyError:
+                    raise ValueError(f"'{obj_name}' invalid objective.")
+                except ValueError:
+                    raise ValueError(f"Invalid threshold value '{val_str}' for {obj_name}")
+            else:
+                raise ValueError(f"Invalid format '{entry}'. Expected 'OBJECTIVE=threshold'")
 
         if not active_objectives_raw:
-            raise ValueError("Error: No valid active_objectives selected.")
+            raise ValueError("Error: No valid objectives specified.")
 
         # Set Objectives in correct order (enum definition order)
         active_objectives = [obj for obj in FitnessObjective if obj in active_objectives_raw]
-
-        # Parse thresholds
-        thresholds = {}
-        if args.thresholds:
-            for t in args.thresholds:
-                try:
-                    key_str, val_str = t.split("=")
-                    obj_enum = FitnessObjective[key_str.strip()]
-                    thresholds[obj_enum] = float(val_str.strip())
-                except Exception as e:
-                    raise ValueError(f"Error parsing threshold '{t}': {e}")
 
         # Set batch size (Set to pop_size if pop_size < batch_size or batch_size <= 0)
         batch_size = min(args.batch_size, args.pop_size) if args.batch_size > 0 else args.pop_size

@@ -46,14 +46,8 @@ class ConfigData:
         print(f"Notify (WhatsApp):     {self.notify}")
         print(f"Mode:                  {self.mode.name}")
 
-        obj_names = [o.name for o in self.active_objectives]
-        print(f"Objectives:            {obj_names}")
-
-        if self.thresholds:
-            t_list = [f"{obj.name}<={val}" for obj, val in self.thresholds.items()]
-            print(f"Thresholds:            {', '.join(t_list)}")
-        else:
-            print("Thresholds:        None (Running full generations)")
+        obj_str = ", ".join(f"{obj.name}={self.thresholds.get(obj, 'N/A')}" for obj in self.active_objectives)
+        print(f"Objectives:            {obj_str}")
 
         if torch.cuda.is_available():
             print(f"Cuda on ({torch.cuda.device_count()} GPUs)")

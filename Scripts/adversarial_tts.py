@@ -59,8 +59,7 @@ def initialize_parser():
 
     # Enum/Selection parameters
     parser.add_argument("--mode", type=str.upper, default="TARGETED", choices=AttackMode._member_names_, help="Attack mode.")
-    parser.add_argument("--ACTIVE_OBJECTIVES", nargs="+", type=str.upper, default=["PESQ", "WHISPER_PROB"], choices=FitnessObjective._member_names_, help="List of active objectives (e.g. PESQ WER_GT UTMOS).")
-    parser.add_argument("--thresholds", nargs='*', type=str, default=["PESQ=0.3", "WHISPER_PROB=0.0"], help="Early stopping thresholds. Format: OBJ=Val")
+    parser.add_argument("--objectives", type=str, default="PESQ=0.3, WHISPER_PROB=0.0", help="Objectives with thresholds. Format: 'OBJ1=val1, OBJ2=val2'")
 
     return parser
 

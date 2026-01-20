@@ -41,7 +41,7 @@ def main():
         active_objectives=active_objectives,
         model_data=ModelData(tts_model=tts, asr_model=asr),
         text_gt=text_1,
-        text_target=text_2,
+        text_target=text_1,
         mode=mode,
         audio_gt=audio_1,
     )
@@ -54,8 +54,8 @@ def main():
 
     # Create context for evaluation (testing audio_1)
     context = ObjectiveContext(
-        audio_mixed_batch=audio_2,
-        asr_texts=asr_2,
+        audio_mixed_batch=audio_1,
+        asr_texts=asr_1,
         interpolation_vectors=torch.zeros(1, 1),
         mel_batch=mel_batch_1
     )
