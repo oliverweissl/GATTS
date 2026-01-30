@@ -27,9 +27,9 @@ class PerTargetObjective(BaseObjective):
             language_switch='remove-flags'
         )
 
-        # Separator: space between phonemes, space between words
+        # Separator: space between phonemes, no word boundary marker
         # Keeps multi-char phonemes like 'dʒ' intact as single units
-        self._separator = Separator(phone=" ", word=" ")
+        self._separator = Separator(phone=" ", word="")
 
         # Pre-compute target phonemes
         self._target_phonemes = self._batch_to_phonemes([self.text_target])[0]
