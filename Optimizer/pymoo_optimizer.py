@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 from pymoo.algorithms.base.genetic import GeneticAlgorithm
 from pymoo.core.evaluator import Evaluator
 from pymoo.core.population import Population
+
 from pymoo.core.problem import Problem
 from pymoo.core.termination import NoTermination
 from pymoo.problems.static import StaticProblem
@@ -59,7 +60,18 @@ class PymooOptimizer(Optimizer):
         logging.info("Sampling new population...")
         static = StaticProblem(self._problem, F=np.column_stack(self._fitness))
         Evaluator().eval(static, self._pop_current)
-        self._pymoo_algo.tell(self._pop_current)
+
+        # Inject archive solutions (with pre-assigned fitness) before selection
+        if self._best_candidates:
+            archive_X = np.array([c.solution for c in self._best_candidates])
+            archive_F = np.array([list(c.fitness) for c in self._best_candidates])
+            archive_pop = Population.new(X=archive_X)
+            archive_pop.set("F", archive_F)
+            combined_pop = Population.merge(self._pop_current, archive_pop)
+        else:
+            combined_pop = self._pop_current
+
+        self._pymoo_algo.tell(combined_pop)
 
         self._pop_current = self._pymoo_algo.ask()
         self._x_current = self._clip_to_bounds(self._pop_current.get("X"))

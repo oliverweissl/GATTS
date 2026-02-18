@@ -9,7 +9,7 @@ from helper import get_local_pareto_front, calculate_2d_hypervolume
 
 
 class GraphPlotter:
-    def __init__(self, objectives, generations, folder_path, fitness_history):
+    def __init__(self, objectives, generations, folder_path, fitness_history, archive_history):
         self.objectives = objectives
         self.folder_path = folder_path
         if not fitness_history or len(fitness_history) == 0:
@@ -17,6 +17,7 @@ class GraphPlotter:
             return
         else:
             self.fitness_history = fitness_history
+            self.archive_history = archive_history
 
         # 1. Define the Global Gradient
         self.cmap = plt.get_cmap('viridis')
@@ -90,10 +91,8 @@ class GraphPlotter:
         fig.suptitle(f"Pareto Front Evolution: {obj_names[0]} vs {obj_names[1]}", fontsize=18)
 
         for i, idx in enumerate(indices):
-            # Access raw matrix directly
-            gen_data = self.fitness_history[idx]
-
-            fit_matrix = get_local_pareto_front(gen_data)
+            # Archive history is already the accumulated Pareto front
+            fit_matrix = self.archive_history[idx]
             if fit_matrix.size == 0 or fit_matrix.shape[1] < 2: continue
 
             # Safe color access
@@ -163,10 +162,10 @@ class GraphPlotter:
     def generate_minimal_population_graph(self):
         active_objectives = self.objectives
 
-        # 1. Calculate Mins manually from history
+        # 1. Calculate Mins from accumulated archive (monotonically non-increasing)
         mins_list = []
-        for gen_matrix in self.fitness_history:
-            mins_list.append(np.min(gen_matrix, axis=0))
+        for archive_snapshot in self.archive_history:
+            mins_list.append(np.min(archive_snapshot, axis=0))
 
         # 2. Convert to DataFrame
         obj_names = [obj.name for obj in active_objectives]
@@ -208,11 +207,10 @@ class GraphPlotter:
         ref_point = [1.1, 1.1]
 
         hv_history = []
-        for gen_data in self.fitness_history:
-            front = get_local_pareto_front(gen_data)
-
-            if front.shape[1] >= 2:
-                hv = calculate_2d_hypervolume(front[:, :2], ref_point)
+        for archive_snapshot in self.archive_history:
+            # Archive is already the accumulated Pareto front — no local filtering needed
+            if archive_snapshot.shape[1] >= 2:
+                hv = calculate_2d_hypervolume(archive_snapshot[:, :2], ref_point)
                 hv_history.append(hv)
 
         if not hv_history: return

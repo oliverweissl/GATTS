@@ -422,7 +422,7 @@ class RunLogger:
         self.folder_path = folder_path
         return folder_path
 
-    def save_all_results(self, optimizer, fitness_data, generation_count, elapsed_time_total,
+    def save_all_results(self, optimizer, fitness_data, archive_data, generation_count, elapsed_time_total,
                         audio_gt, audio_target, config_data):
         """
         Handles all logging, saving, and graph generation for a completed optimization run.
@@ -475,7 +475,7 @@ class RunLogger:
 
         # 9. Generate graphs
         from Trainer.GraphPlotter import GraphPlotter
-        graph_plotter = GraphPlotter(self.active_objectives, generation_count, folder_path, fitness_data)
+        graph_plotter = GraphPlotter(self.active_objectives, generation_count, folder_path, fitness_data, archive_data)
         graph_plotter.generate_hypervolume_graph()
         graph_plotter.generate_pareto_population_graph()
         graph_plotter.generate_mean_population_graph()

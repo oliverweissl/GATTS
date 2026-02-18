@@ -106,11 +106,11 @@ def main():
             solution_shape=(audio_embedding_gt.input_length.detach().cpu().item(), config_data.size_per_phoneme),
         )
 
-        fitness_data, generation_count, elapsed_time_total = trainer.run_full_iteration(optimizer, config_data.num_generations, config_data.pop_size, config_data.batch_size)
+        fitness_data, archive_data, generation_count, elapsed_time_total = trainer.run_full_iteration(optimizer, config_data.num_generations, config_data.pop_size, config_data.batch_size)
 
         # 5. Save all results (audios, spectrograms, graphs, etc.)
         logger.save_all_results(
-            optimizer, fitness_data, generation_count, elapsed_time_total,
+            optimizer, fitness_data, archive_data, generation_count, elapsed_time_total,
             audio_gt, audio_target, config_data
         )
 

@@ -67,6 +67,7 @@ class AdversarialTrainer:
         """
 
         fitness_history = []
+        archive_history = []
         gen = -1
         elapsed_time_total = 0.0
 
@@ -86,6 +87,9 @@ class AdversarialTrainer:
 
                     generation_matrix = np.column_stack(fitness_arrays)
                     fitness_history.append(generation_matrix)
+
+                    archive_snapshot = np.array([list(c.fitness) for c in optimizer.best_candidates])
+                    archive_history.append(archive_snapshot)
 
                     elapsed_time_total += elapsed_time
 
@@ -116,7 +120,7 @@ class AdversarialTrainer:
         # Clean up
         torch.cuda.empty_cache()
 
-        return fitness_history, gen+1, elapsed_time_total
+        return fitness_history, archive_history, gen+1, elapsed_time_total
 
     def run_one_generation(self, optimizer, pop_size, batch_size) -> tuple[list[list[float]], bool, float]:
 
