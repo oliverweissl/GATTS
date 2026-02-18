@@ -59,11 +59,7 @@ class WerGtObjective(BaseObjective):
                 hypothesis_transform=self.wer_transformations,
             )
 
-            raw_wer = min(float(raw_wer), 2.0)
-            raw_wer /= 2.0
-
-            if raw_wer > 1:
-                tqdm.write(f"WER > 1 for \"{asr_text}\"")
+            raw_wer = min(float(raw_wer), 1.0)
             val = -raw_wer + 1
             scores.append(val)
 
