@@ -6,7 +6,7 @@ import whisper
 import requests
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
-import platform
+
 import numpy as np
 import soundfile as sf
 
@@ -85,63 +85,4 @@ def save_audio(audio, file_path):
     sf.write(file_path, audio, samplerate=24000)
 
 
-def write_run_summary(folder_path, text_best, candidate, gen_count, elapsed_time, config_data):
-
-    # 1. System Metadata
-    os_info = f"{platform.system()} {platform.release()}"
-    gpu_info = "CPU Only"
-    if torch.cuda.is_available():
-        vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
-        gpu_info = f"{torch.cuda.get_device_name(0)} ({vram:.2f} GB VRAM)"
-
-    avg_per_gen = elapsed_time / gen_count if gen_count > 0 else 0
-
-    summary_path = os.path.join(folder_path, "run_summary.txt")
-
-    with open(summary_path, "w", encoding="utf-8") as f:
-        f.write("=" * 50 + "\n")
-        f.write(" ADVERSARIAL TTS OPTIMIZATION REPORT\n")
-        f.write("=" * 50 + "\n\n")
-
-        f.write("--- [1] INPUT DATA ---\n")
-        # Assuming these paths are stored in your config or audio_data
-        f.write(f"GT Text:      {config_data.text_gt}\n")
-        f.write(f"Target Text:  {config_data.text_target if config_data.text_target else '[NONE]'}\n")
-
-        f.write("\n--- [2] CLI ARGUMENTS & CONFIG ---\n")
-        f.write(f"Attack Mode:       {config_data.mode.name}\n")
-        f.write(f"Objectives:        {', '.join([obj.name for obj in config_data.active_objectives])}\n")
-        f.write(f"Population Size:   {config_data.pop_size}\n")
-        f.write(f"Size Per Phoneme:  {config_data.size_per_phoneme}\n")
-        f.write(f"IV Scalar:         {config_data.iv_scalar}\n")
-        f.write(f"Subspace Opt:      {config_data.subspace_optimization}\n")
-
-        if config_data.thresholds:
-            t_str = ", ".join([f"{k.name} <= {v}" for k, v in config_data.thresholds.items()])
-            f.write(f"Early Stopping:    {t_str}\n")
-        else:
-            f.write(f"Early Stopping:    Off (Ran full duration)\n")
-
-        f.write("\n--- [3] PERFORMANCE & HARDWARE ---\n")
-        f.write(f"Hardware:          {gpu_info}\n")
-        f.write(f"OS/CPU:            {os_info} | {platform.processor()}\n")
-        f.write(f"Gens Completed:    {gen_count}\n")
-        f.write(f"Total Time:        {elapsed_time:.2f}s\n")
-        f.write(f"Efficiency:        {avg_per_gen:.2f}s per generation\n")
-
-        f.write("\n--- [4] BEST CANDIDATE RESULTS ---\n")
-        f.write(f"Selection Metric:  Euclidean Distance to Origin (Knee Point)\n")
-        f.write(f"Generation Found:  {getattr(candidate, 'generation', 'Unknown')}\n")
-        f.write("-" * 30 + "\n")
-
-        # Detailed Fitness Scores
-        for obj, score in zip(config_data.active_objectives, candidate.fitness):
-            f.write(f"  {obj.name:<15}: {float(score):.8f}\n")
-
-        f.write("-" * 30 + "\n")
-        f.write(f"Final Transcription: \"{text_best}\"\n")
-
-        f.write("\n" + "=" * 50 + "\n")
-        f.write(" END OF REPORT\n")
-        f.write("=" * 50 + "\n")
 

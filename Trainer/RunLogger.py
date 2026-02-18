@@ -348,6 +348,64 @@ class RunLogger:
             json.dump(summary, f, indent=2)
         print("[Log] Run summary saved as run_summary.json")
 
+    def write_run_summary(self, text_best, candidate, config_data, generation_count, elapsed_time_total):
+        gpu_info = "CPU Only"
+        if torch.cuda.is_available():
+            vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+            gpu_info = f"{torch.cuda.get_device_name(0)} ({vram:.2f} GB VRAM)"
+
+        os_info = f"{platform.system()} {platform.release()}"
+        avg_per_gen = elapsed_time_total / generation_count if generation_count > 0 else 0
+
+        summary_path = os.path.join(self.folder_path, "run_summary.txt")
+
+        with open(summary_path, "w", encoding="utf-8") as f:
+            f.write("=" * 50 + "\n")
+            f.write(" ADVERSARIAL TTS OPTIMIZATION REPORT\n")
+            f.write("=" * 50 + "\n\n")
+
+            f.write("--- [1] INPUT DATA ---\n")
+            f.write(f"GT Text:      {config_data.text_gt}\n")
+            f.write(f"Target Text:  {config_data.text_target if config_data.text_target else '[NONE]'}\n")
+
+            f.write("\n--- [2] CLI ARGUMENTS & CONFIG ---\n")
+            f.write(f"Attack Mode:       {config_data.mode.name}\n")
+            f.write(f"Objectives:        {', '.join([obj.name for obj in self.active_objectives])}\n")
+            f.write(f"Population Size:   {config_data.pop_size}\n")
+            f.write(f"Size Per Phoneme:  {config_data.size_per_phoneme}\n")
+            f.write(f"IV Scalar:         {config_data.iv_scalar}\n")
+            f.write(f"Subspace Opt:      {config_data.subspace_optimization}\n")
+
+            if config_data.thresholds:
+                t_str = ", ".join([f"{k.name} <= {v}" for k, v in config_data.thresholds.items()])
+                f.write(f"Early Stopping:    {t_str}\n")
+            else:
+                f.write(f"Early Stopping:    Off (Ran full duration)\n")
+
+            f.write("\n--- [3] PERFORMANCE & HARDWARE ---\n")
+            f.write(f"Hardware:          {gpu_info}\n")
+            f.write(f"OS/CPU:            {os_info} | {platform.processor()}\n")
+            f.write(f"Gens Completed:    {generation_count}\n")
+            f.write(f"Total Time:        {elapsed_time_total:.2f}s\n")
+            f.write(f"Efficiency:        {avg_per_gen:.2f}s per generation\n")
+
+            f.write("\n--- [4] BEST CANDIDATE RESULTS ---\n")
+            f.write(f"Selection Metric:  Euclidean Distance to Origin (Knee Point)\n")
+            f.write(f"Generation Found:  {getattr(candidate, 'generation', 'Unknown')}\n")
+            f.write("-" * 30 + "\n")
+
+            for obj, score in zip(self.active_objectives, candidate.fitness):
+                f.write(f"  {obj.name:<15}: {float(score):.8f}\n")
+
+            f.write("-" * 30 + "\n")
+            f.write(f"Final Transcription: \"{text_best}\"\n")
+
+            f.write("\n" + "=" * 50 + "\n")
+            f.write(" END OF REPORT\n")
+            f.write("=" * 50 + "\n")
+
+        print("[Log] Run summary saved as run_summary.txt")
+
     def setup_output_directory(self):
         """Creates the timestamped output folder and returns its path."""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
@@ -407,8 +465,9 @@ class RunLogger:
         # 7. Save torch state
         self.save_torch_state(text_best, audio_embedding_best, best_candidate, config_data)
 
-        # 8. Save run summary JSON
+        # 8. Save run summary JSON and TXT
         self.save_run_summary(text_best, best_candidate, config_data, generation_count, elapsed_time_total)
+        self.write_run_summary(text_best, best_candidate, config_data, generation_count, elapsed_time_total)
 
         # 9. Generate graphs
         from Trainer.GraphPlotter import GraphPlotter

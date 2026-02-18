@@ -28,7 +28,6 @@ from Trainer.RunLogger import RunLogger
 from Trainer.VectorManipulator import VectorManipulator
 from Models.styletts2 import StyleTTS2
 
-from helper import write_run_summary
 
 # Import Pymoo components
 from Optimizer.pymoo_optimizer import PymooOptimizer
@@ -114,9 +113,6 @@ def main():
             optimizer, fitness_data, generation_count, elapsed_time_total,
             audio_gt, audio_target, config_data
         )
-
-        # 6. Write Summary to Terminal
-        write_run_summary(folder_path, text_best, best_candidate, generation_count, elapsed_time_total, config_data)
 
         print("[Log] Finished saving all results")
 
