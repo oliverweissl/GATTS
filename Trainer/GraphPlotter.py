@@ -5,7 +5,7 @@ import numpy as np
 import os
 import pandas as pd
 
-from helper import get_local_pareto_front, calculate_2d_hypervolume
+from helper import calculate_2d_hypervolume
 
 
 class GraphPlotter:
