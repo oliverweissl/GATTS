@@ -15,7 +15,7 @@ from Objectives.Target.MerTargetObjective import MerTargetObjective
 from Objectives.Target.PerTargetObjective import PerTargetObjective
 from Objectives.Target.SbertTargetObjective import SbertTargetObjective
 from Objectives.Target.TextEmbTargetObjective import TextEmbTargetObjective
-from Objectives.Target.WhisperProbObjective import WhisperProbObjective
+from Objectives.Target.WhisperProbTargetObjective import WhisperProbTargetObjective
 from Objectives.Target.Wav2VecDifferentObjective import Wav2VecDifferentObjective
 from Objectives.Target.Wav2VecAsrObjective import Wav2VecAsrObjective
 
@@ -27,6 +27,7 @@ from Objectives.GroundTruth.SbertGtObjective import SbertGtObjective
 from Objectives.GroundTruth.TextEmbGtObjective import TextEmbGtObjective
 from Objectives.GroundTruth.Wav2VecSimilarObjective import Wav2VecSimilarObjective
 from Objectives.GroundTruth.VocabOverlapObjective import VocabOverlapObjective
+from Objectives.GroundTruth.WhisperProbGtObjective import WhisperProbGtObjective
 
 class FitnessObjective(Enum):
     # ==== Increase Naturalness ====
@@ -44,7 +45,7 @@ class FitnessObjective(Enum):
     PER_TARGET = PerTargetObjective
     SBERT_TARGET = SbertTargetObjective
     TEXT_EMB_TARGET = TextEmbTargetObjective
-    WHISPER_PROB = WhisperProbObjective
+    WHISPER_PROB_TARGET = WhisperProbTargetObjective
 
     # ==== Optimize Text Away From Ground-Truth ====
     WER_GT = WerGtObjective
@@ -53,6 +54,7 @@ class FitnessObjective(Enum):
     SBERT_GT = SbertGtObjective
     TEXT_EMB_GT = TextEmbGtObjective
     SET_OVERLAP = VocabOverlapObjective
+    WHISPER_PROB_GT = WhisperProbGtObjective
 
     # ==== Optimize Audio Similarity ====
     WAV2VEC_SIMILAR = Wav2VecSimilarObjective

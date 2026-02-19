@@ -4,7 +4,7 @@ from Objectives.base import BaseObjective
 from Datastructures.dataclass import ModelData, ModelEmbeddingData, ObjectiveContext
 
 
-class WhisperProbObjective(BaseObjective):
+class WhisperProbTargetObjective(BaseObjective):
     """
     Whisper probability objective - measures how likely Whisper thinks
     the audio matches the target text.
@@ -59,7 +59,7 @@ class WhisperProbObjective(BaseObjective):
         """
         if context.mel_batch is None:
             raise ValueError(
-                "WhisperProbObjective requires mel_batch in ObjectiveContext. "
+                "WhisperProbTargetObjective requires mel_batch in ObjectiveContext. "
                 "Ensure the main loop provides mel spectrogram before calling this objective."
             )
 
