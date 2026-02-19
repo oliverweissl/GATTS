@@ -208,58 +208,27 @@ class RunLogger:
         f = np.array([c.fitness for c in candidates])
         print(f"\n[Log] Candidates on Pareto Front: {len(candidates)}")
 
-        # Detect zero thresholds — these cannot be used as a normalization scale (div/0).
-        has_zero_threshold = thresholds and any(
-            thresholds[obj] == 0.0
-            for obj in self.active_objectives
-            if obj in thresholds
-        )
+        # Pre-scale dimensions that have a positive threshold (threshold → 1.0).
+        # Zero thresholds are skipped (avoid div/0); [min,max] below handles them.
+        working_f = f.copy().astype(np.float64)
+        if thresholds:
+            scaled = []
+            for i, obj in enumerate(self.active_objectives):
+                if obj in thresholds and thresholds[obj] > 0.0:
+                    working_f[:, i] /= thresholds[obj]
+                    scaled.append(f"{obj.name}÷{thresholds[obj]}")
+            if scaled:
+                print(f"[Log] Pre-scaled: {', '.join(scaled)}")
 
-        # --- Strategy A: No thresholds, or a zero threshold is present ---
-        # Fall back to [min, max] normalization. If a zero threshold exists, try to filter
-        # to candidates that meet all thresholds first; if none qualify, use all candidates.
-        if not thresholds or has_zero_threshold:
-            final_indices = np.arange(len(candidates))
-            final_fitness = f
-
-            if has_zero_threshold:
-                satisfied_mask = np.ones(len(candidates), dtype=bool)
-                for i, obj in enumerate(self.active_objectives):
-                    if obj in thresholds:
-                        satisfied_mask &= (f[:, i] <= thresholds[obj])
-                if np.any(satisfied_mask):
-                    final_indices = np.where(satisfied_mask)[0]
-                    final_fitness = f[satisfied_mask]
-                    print(f"[Log] Zero threshold present. Restricted to {len(final_indices)} candidate(s) meeting all thresholds.")
-                else:
-                    print(f"[Log] Zero threshold present, no candidate meets it. Using all candidates.")
-
-            mins = final_fitness.min(axis=0)
-            maxs = final_fitness.max(axis=0)
-            ranges = maxs - mins
-            ranges[ranges == 0] = 1.0
-            normalized_fitness = (final_fitness - mins) / ranges
-            distances = np.linalg.norm(normalized_fitness, axis=1)
-            best_local_idx = np.argmin(distances)
-            selected = candidates[final_indices[best_local_idx]]
-            print(f"[Log] Selection: [min,max] knee point")
-            print(f"[Log] Selected Candidate Fitness: {selected.fitness.tolist()}")
-            return selected
-
-        # --- Strategy B: All thresholds > 0 → threshold-normalized knee point ---
-        # No filtering. Normalize every candidate by threshold (threshold → 1.0).
-        # Tighter thresholds get proportionally higher weight: scale = 1/threshold.
-        # e.g. PESQ threshold 0.4 → weight 2.5x; WHISPER_PROB_GT threshold 0.01 → weight 100x.
-        # Objectives without a threshold use observed max as scale.
-        scale = np.array([
-            thresholds[obj] if obj in thresholds else (f[:, i].max() or 1.0)
-            for i, obj in enumerate(self.active_objectives)
-        ])
-        normalized_fitness = f / scale
+        # [min, max] knee point on the (possibly pre-scaled) values
+        mins = working_f.min(axis=0)
+        maxs = working_f.max(axis=0)
+        ranges = maxs - mins
+        ranges[ranges == 0] = 1.0
+        normalized_fitness = (working_f - mins) / ranges
         distances = np.linalg.norm(normalized_fitness, axis=1)
         best_idx = np.argmin(distances)
         selected = candidates[best_idx]
-        print(f"[Log] Selection: threshold-normalized knee point (scale={scale.tolist()})")
         print(f"[Log] Selected Candidate Fitness: {selected.fitness.tolist()}")
         return selected
 
