@@ -27,7 +27,7 @@ def _lemmatize_word_set(words: set[str]) -> set[str]:
     return {_lemmatize_word(w) for w in words}
 
 
-class VocabOverlapObjective(BaseObjective):
+class SetOverlapObjective(BaseObjective):
     """
     Calculates the percentage of Ground Truth content words that 'survived' in the ASR output.
 
