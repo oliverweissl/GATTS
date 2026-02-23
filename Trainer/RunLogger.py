@@ -273,7 +273,12 @@ class RunLogger:
 
         # Expand to the same batch size used during optimization so Whisper selects
         # the same cuBLAS GEMM kernel path as when the fitness score was computed.
-        batch_size = self.vector_manipulator.config_data.batch_size
+        # When pop_size < batch_size only a single batch of pop_size individuals was
+        # ever passed to Whisper, so we must expand to min(batch_size, pop_size).
+        batch_size = min(
+            self.vector_manipulator.config_data.batch_size,
+            self.vector_manipulator.config_data.pop_size,
+        )
         audio_for_whisper = audio_best.expand(batch_size, -1).contiguous()
         asr_texts, _ = asr_model.inference(audio_for_whisper)
         asr_text = asr_texts[0] if isinstance(asr_texts, list) else asr_texts
@@ -428,6 +433,167 @@ class RunLogger:
         print(f"[Log] Output directory initialized: {folder_path}")
         self.folder_path = folder_path
         return folder_path
+
+    def setup_results_directory(self, sentence_id: int, run_id: int, base_path: str = "outputs/results"):
+        """Creates the structured results folder for a Harvard sentences run."""
+        folder_path = os.path.join(base_path, f"sentence_{sentence_id:03d}", f"run_{run_id}")
+        os.makedirs(folder_path, exist_ok=True)
+        print(f"[Log] Results directory initialized: {folder_path}")
+        self.folder_path = folder_path
+        return folder_path
+
+    def save_results_fitness_history(self, fitness_history: list, archive_history: list):
+        """
+        Saves a compact per-generation summary to 'fitness_history.csv'.
+        Each row: generation, best/mean per objective, hypervolume (2D only), pareto_size.
+        """
+        from helper import calculate_2d_hypervolume
+
+        obj_names = [obj.name for obj in self.active_objectives]
+        num_objectives = len(obj_names)
+
+        rows = []
+        for gen_idx, (gen_matrix, archive_snapshot) in enumerate(zip(fitness_history, archive_history)):
+            row = {"generation": gen_idx + 1}
+
+            gen_min = gen_matrix.min(axis=0)
+            gen_mean = gen_matrix.mean(axis=0)
+            for i, name in enumerate(obj_names):
+                row[f"best_{name}"] = float(gen_min[i])
+                row[f"mean_{name}"] = float(gen_mean[i])
+
+            if num_objectives == 2 and archive_snapshot.shape[1] >= 2:
+                hv = calculate_2d_hypervolume(archive_snapshot[:, :2], [1.1, 1.1])
+            else:
+                hv = float("nan")
+            row["hypervolume"] = hv
+            row["pareto_size"] = int(len(archive_snapshot))
+
+            rows.append(row)
+
+        df = pd.DataFrame(rows)
+        csv_path = os.path.join(self.folder_path, "fitness_history.csv")
+        df.to_csv(csv_path, index=False)
+        print("[Log] Compact fitness history saved as fitness_history.csv")
+
+    def save_results_run(
+        self,
+        optimizer,
+        fitness_data: list,
+        archive_data: list,
+        generation_count: int,
+        elapsed_time_total: float,
+        audio_gt,
+        audio_target,
+        config_data,
+        sentence_id: int,
+        run_id: int,
+        seed: int,
+        num_generations: int,
+        save_spectrograms: bool = False,
+        save_graphs: bool = False,
+    ):
+        """
+        Entry point for Harvard sentences batch experiment.
+        Saves results under outputs/results/sentence_XXX/run_Y/.
+        """
+        # 1. Setup directory
+        self.setup_results_directory(sentence_id, run_id)
+
+        # 2. Select best candidate and run final inference
+        best_candidate = self.select_best_candidate(optimizer.best_candidates, config_data.thresholds)
+        audio_best, text_best, audio_embedding_best = self.run_final_inference(best_candidate)
+
+        # 3. Save audio files
+        self.save_audios(audio_gt, audio_target, audio_best)
+
+        # 4. Save compact fitness history CSV
+        self.save_results_fitness_history(fitness_data, archive_data)
+
+        # 5. Build and save new-schema run_summary.json
+        gpu_info = "CPU Only"
+        if torch.cuda.is_available():
+            vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+            gpu_info = f"{torch.cuda.get_device_name(0)} ({vram:.2f} GB VRAM)"
+
+        avg_per_gen = elapsed_time_total / generation_count if generation_count > 0 else 0
+        fitness_names = [obj.name for obj in self.active_objectives]
+        fitness_dict = dict(zip(fitness_names, [float(v) for v in best_candidate.fitness]))
+        thresholds_dict = {k.name: v for k, v in config_data.thresholds.items()} if config_data.thresholds else {}
+
+        success = all(
+            best_candidate.fitness[i] <= config_data.thresholds.get(obj, float("inf"))
+            for i, obj in enumerate(self.active_objectives)
+            if obj in config_data.thresholds
+        )
+
+        summary = {
+            "metadata": {
+                "sentence_id": sentence_id,
+                "run_id": run_id,
+                "seed": seed,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "hardware": gpu_info,
+                "os": f"{platform.system()} {platform.release()}",
+                "cpu": platform.processor(),
+            },
+            "text_data": {
+                "ground_truth_text": config_data.text_gt,
+                "target_text": config_data.text_target,
+                "asr_transcription": text_best,
+            },
+            "success_metrics": {
+                "success": bool(success),
+                "fitness_scores": fitness_dict,
+                "thresholds": thresholds_dict,
+            },
+            "efficiency_metrics": {
+                "generation_count": generation_count,
+                "elapsed_time_seconds": round(elapsed_time_total, 2),
+                "avg_time_per_generation": round(avg_per_gen, 2),
+            },
+            "algorithm_parameters": {
+                "attack_mode": config_data.mode.name,
+                "objectives": fitness_names,
+                "pop_size": config_data.pop_size,
+                "num_generations": num_generations,
+                "size_per_phoneme": config_data.size_per_phoneme,
+                "iv_scalar": config_data.iv_scalar,
+                "subspace_optimization": config_data.subspace_optimization,
+            },
+            "final_solution": {
+                "generation_found": getattr(best_candidate, "generation", None),
+                "fitness_scores": fitness_dict,
+            },
+            "pareto_front": [c.fitness.tolist() for c in optimizer.best_candidates],
+            "file_paths": {
+                "best_mixed_audio": "best_mixed.wav",
+                "ground_truth_audio": "ground_truth.wav",
+                "fitness_history_csv": "fitness_history.csv",
+            },
+        }
+
+        save_path = os.path.join(self.folder_path, "run_summary.json")
+        with open(save_path, "w") as f:
+            json.dump(summary, f, indent=2)
+        print(f"[Log] Run summary saved (sentence={sentence_id}, run={run_id})")
+
+        # 6. Optional spectrograms
+        if save_spectrograms:
+            self.save_spectrograms(audio_gt, audio_target, audio_best)
+
+        # 7. Optional graphs
+        if save_graphs:
+            from Trainer.GraphPlotter import GraphPlotter
+            graph_plotter = GraphPlotter(
+                self.active_objectives, generation_count, self.folder_path, fitness_data, archive_data
+            )
+            graph_plotter.generate_hypervolume_graph()
+            if len(self.active_objectives) == 2:
+                graph_plotter.generate_pareto_population_graph()
+            plt.close("all")
+
+        return self.folder_path, text_best, best_candidate, audio_best
 
     def save_all_results(self, optimizer, fitness_data, archive_data, generation_count, elapsed_time_total,
                         audio_gt, audio_target, config_data):
