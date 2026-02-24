@@ -19,7 +19,7 @@ import argparse
 
 
 def aggregate_results(results_dir: str = "outputs/results", output_dir: str = "outputs"):
-    pattern = os.path.join(results_dir, "sentence_*", "run_*", "run_summary.json")
+    pattern = os.path.join(results_dir, "*", "sentence_*", "run_*", "run_summary.json")
     json_files = sorted(glob.glob(pattern))
 
     if not json_files:
@@ -41,9 +41,9 @@ def aggregate_results(results_dir: str = "outputs/results", output_dir: str = "o
 
         # metadata
         meta = summary.get("metadata", {})
+        row["run_timestamp"] = meta.get("run_timestamp")
         row["sentence_id"] = meta.get("sentence_id")
         row["run_id"] = meta.get("run_id")
-        row["seed"] = meta.get("seed")
         row["timestamp"] = meta.get("timestamp")
         row["hardware"] = meta.get("hardware")
 

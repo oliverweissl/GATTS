@@ -434,9 +434,9 @@ class RunLogger:
         self.folder_path = folder_path
         return folder_path
 
-    def setup_results_directory(self, sentence_id: int, run_id: int, base_path: str = "outputs/results"):
+    def setup_results_directory(self, sentence_id: int, run_id: int, run_timestamp: str, base_path: str = "outputs/results"):
         """Creates the structured results folder for a Harvard sentences run."""
-        folder_path = os.path.join(base_path, f"sentence_{sentence_id:03d}", f"run_{run_id}")
+        folder_path = os.path.join(base_path, run_timestamp, f"sentence_{sentence_id:03d}", f"run_{run_id}")
         os.makedirs(folder_path, exist_ok=True)
         print(f"[Log] Results directory initialized: {folder_path}")
         self.folder_path = folder_path
@@ -488,17 +488,17 @@ class RunLogger:
         config_data,
         sentence_id: int,
         run_id: int,
-        seed: int,
+        run_timestamp: str,
         num_generations: int,
         save_spectrograms: bool = False,
         save_graphs: bool = False,
     ):
         """
         Entry point for Harvard sentences batch experiment.
-        Saves results under outputs/results/sentence_XXX/run_Y/.
+        Saves results under outputs/results/<run_timestamp>/sentence_XXX/run_Y/.
         """
         # 1. Setup directory
-        self.setup_results_directory(sentence_id, run_id)
+        self.setup_results_directory(sentence_id, run_id, run_timestamp)
 
         # 2. Select best candidate and run final inference
         best_candidate = self.select_best_candidate(optimizer.best_candidates, config_data.thresholds)
@@ -529,9 +529,9 @@ class RunLogger:
 
         summary = {
             "metadata": {
+                "run_timestamp": run_timestamp,
                 "sentence_id": sentence_id,
                 "run_id": run_id,
-                "seed": seed,
                 "timestamp": datetime.datetime.now().isoformat(),
                 "hardware": gpu_info,
                 "os": f"{platform.system()} {platform.release()}",
