@@ -108,13 +108,27 @@ def main():
             solution_shape=(audio_embedding_gt.input_length.detach().cpu().item(), config_data.size_per_phoneme),
         )
 
-        fitness_data, archive_data, generation_count, elapsed_time_total = trainer.run_full_iteration(optimizer, config_data.num_generations, config_data.pop_size, config_data.batch_size)
+        fitness_data, archive_data, generation_count, elapsed_time_total, interrupted = trainer.run_full_iteration(optimizer, config_data.num_generations, config_data.pop_size, config_data.batch_size)
 
         # 5. Save all results (audios, spectrograms, graphs, etc.)
-        logger.save_all_results(
-            optimizer, fitness_data, archive_data, generation_count, elapsed_time_total,
-            audio_gt, audio_target, config_data
+        folder_path = logger.setup_objective_directory()
+        logger.save_results_run(
+            optimizer=optimizer,
+            fitness_data=fitness_data,
+            archive_data=archive_data,
+            generation_count=generation_count,
+            elapsed_time_total=elapsed_time_total,
+            audio_gt=audio_gt,
+            audio_target=audio_target,
+            config_data=config_data,
+            folder_path=folder_path,
+            save_torch_state=True,
+            save_spectrograms=True,
+            save_graphs=True,
         )
+
+        if interrupted:
+            break
 
         print("[Log] Finished saving all results")
 

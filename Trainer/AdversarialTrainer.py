@@ -52,33 +52,31 @@ class AdversarialTrainer:
                 print(f"[ERROR] {obj_enum.name} evaluation failed: {e}")
         return scores
 
-    def run_full_iteration(self, optimizer, num_generations, pop_size, batch_size) -> tuple[list[np.ndarray], int, float]:
+    def run_full_iteration(self, optimizer, num_generations, pop_size, batch_size) -> tuple[list[np.ndarray], list[np.ndarray], int, float, bool]:
         """
         Run a single optimization cycle through all generations.
 
-        Initializes a fresh optimizer, runs until generations complete or
-        threshold is met, and returns the results.
-
         Returns:
-            tuple: (history, generations_run, total_inference_time)
-                - history: List of matrices (one per generation)
+            tuple: (fitness_history, archive_history, generations_run, total_inference_time, interrupted)
+                - fitness_history: List of matrices (one per generation)
+                - archive_history: List of Pareto archive snapshots (one per generation)
                 - generations_run: Integer count of generations completed
                 - total_inference_time: Float seconds
+                - interrupted: True if stopped early via Ctrl+C
         """
 
         fitness_history = []
         archive_history = []
         gen = -1
         elapsed_time_total = 0.0
+        interrupted = False
 
         print("Press Ctrl+C to stop training early and save results.")
 
         try:
-            # 1. Create the progress bar object
             with tqdm(range(num_generations), desc="Generations", leave=False) as pbar:
 
                 for gen in pbar:
-                    # --- Existing Logic ---
                     fitness_score_per_objective, stop_optimization, elapsed_time, audio_per_individual = self.run_one_generation(optimizer, pop_size, batch_size)
                     fitness_arrays = [np.array(scores) for scores in fitness_score_per_objective]
 
@@ -93,22 +91,16 @@ class AdversarialTrainer:
 
                     elapsed_time_total += elapsed_time
 
-                    # Calculate stats for this generation
-                    # axis=0 means "down the column" (across all individuals)
                     current_means = generation_matrix.mean(axis=0)
                     current_mins = np.array([list(c.fitness) for c in optimizer.best_candidates]).min(axis=0)
 
-                    # Format the string (e.g., "WER: 0.15 (Avg: 0.40) | PESQ: ...")
                     stats_parts = []
                     for idx, obj in enumerate(self.objectives):
                         stats_parts.append(
                             f"{obj.name}: {current_mins[idx]:.4f} (Avg: {current_means[idx]:.4f})"
                         )
 
-                    status_message = " | ".join(stats_parts)
-
-                    # Print a permanent log line (Preserves history)
-                    pbar.write(f"[Gen {gen + 1}] {status_message}")
+                    pbar.write(f"[Gen {gen + 1}] {' | '.join(stats_parts)}")
 
                     if stop_optimization:
                         pbar.write(f"\n[!] Early Stopping at Generation {gen + 1} (Thresholds met).")
@@ -116,12 +108,11 @@ class AdversarialTrainer:
 
         except KeyboardInterrupt:
             print(f"\n[!] Manual Stop triggered at Generation {gen + 1}. Saving results so far...")
-            raise
+            interrupted = True
 
-        # Clean up
         torch.cuda.empty_cache()
 
-        return fitness_history, archive_history, gen+1, elapsed_time_total
+        return fitness_history, archive_history, gen+1, elapsed_time_total, interrupted
 
     def run_one_generation(self, optimizer, pop_size, batch_size) -> tuple[list[list[float]], bool, float, list]:
 
