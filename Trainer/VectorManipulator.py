@@ -81,7 +81,7 @@ def generate_similar_noise(reference_tensor):
     For lower-dim tensors: falls back to global stats.
     """
 
-    """
+
     if reference_tensor.dim() >= 3:
         dims = tuple(range(reference_tensor.dim() - 1))
         mu = reference_tensor.mean(dim=dims, keepdim=True)
@@ -89,9 +89,6 @@ def generate_similar_noise(reference_tensor):
     else:
         mu = reference_tensor.mean()
         std = reference_tensor.std().clamp(min=1e-6)
-    """
-    mu = reference_tensor.mean()
-    std = reference_tensor.std()
     return torch.randn_like(reference_tensor) * std + mu
 
 class VectorManipulator:
