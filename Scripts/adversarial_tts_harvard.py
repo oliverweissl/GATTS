@@ -173,8 +173,8 @@ def initialize_parser():
     parser.add_argument("--mode", type=str, default="NOISE_UNTARGETED")
     parser.add_argument("--target_text", type=str, default="")
     parser.add_argument("--objectives", type=str, default="PESQ=0.2, SET_OVERLAP=0.5")
-    parser.add_argument("--save_spectrograms", action="store_true")
-    parser.add_argument("--save_graphs", action="store_true")
+    parser.add_argument("--save_spectrograms", action="store_true", default=True)
+    parser.add_argument("--save_graphs", action="store_true", default=True)
     parser.add_argument("--gcs_bucket", type=str, default="thesis-data-2026")
     parser.add_argument("--gcs_prefix", type=str, default="outputs")
     return parser
