@@ -10,6 +10,7 @@ The outer loop (loop_count iterations) is handled by the calling code.
 Logging and visualization should be handled separately via RunLogger.
 """
 
+import sys
 import time
 import torch
 import numpy as np
@@ -74,7 +75,8 @@ class AdversarialTrainer:
         print("Press Ctrl+C to stop training early and save results.")
 
         try:
-            with tqdm(range(num_generations), desc="Generations", leave=False) as pbar:
+            with tqdm(range(num_generations), desc="Generations", leave=False,
+                      disable=not sys.stdout.isatty()) as pbar:
 
                 for gen in pbar:
                     fitness_score_per_objective, stop_optimization, elapsed_time, audio_per_individual = self.run_one_generation(optimizer, pop_size, batch_size)
@@ -107,7 +109,7 @@ class AdversarialTrainer:
                         break
 
         except KeyboardInterrupt:
-            print(f"\n[!] Manual Stop triggered at Generation {gen + 1}. Saving results so far...")
+            pbar.write(f"\n[!] Manual Stop triggered at Generation {gen + 1}. Saving results so far...")
             interrupted = True
 
         torch.cuda.empty_cache()
