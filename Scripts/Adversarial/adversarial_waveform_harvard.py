@@ -273,6 +273,7 @@ def main():
                     tts_model, asr_model, config_data.thresholds, objectives_dict, audio_gt, device,
                     mode=config_data.mode, target_audio=audio_target,
                 )
+                target_rms = trainer.target_audio.pow(2).mean().sqrt().item()
                 logger = RunLogger(
                     config_data.active_objectives, tts_model, asr_model, None, device
                 )
