@@ -180,6 +180,7 @@ def initialize_parser():
     parser.add_argument("--mode", type=str, default="TARGETED")
     parser.add_argument("--target_text", type=str, default="")
     parser.add_argument("--objectives", type=str, default="PESQ=0.2, SET_OVERLAP=0.5")
+    parser.add_argument("--min_generations", type=int, default=0)
     parser.add_argument("--save_spectrograms", action="store_true", default=True)
     parser.add_argument("--save_graphs", action="store_true", default=True)
     parser.add_argument("--gcs_bucket", type=str, default="thesis-data-2026")
@@ -217,6 +218,7 @@ def main():
     print(f"  batch_size:         {args.batch_size}")
     print(f"  objectives:         {args.objectives}")
     print(f"  noise_scale:        {args.noise_scale}")
+    print(f"  min_generations:    {args.min_generations}")
     print(f"{'='*60}")
 
     all_summaries = []
@@ -242,6 +244,7 @@ def main():
                     pop_size=args.pop_size,
                     iv_scalar=0.0,
                     size_per_phoneme=1,
+                    num_rms_candidates=1,
                     batch_size=args.batch_size,
                     notify=False,
                     subspace_optimization=False,
@@ -250,7 +253,7 @@ def main():
                 )
                 config_data = loader.load_configuration(run_args)
 
-                audio_gt, audio_target, audio_embedding_gt, audio_embedding_target = loader.generate_audio_data(
+                audio_gt, audio_target, audio_embedding_gt, audio_embedding_target, gt_rms, target_rms = loader.generate_audio_data(
                     config_data.mode, config_data.text_gt, config_data.text_target, tts_model
                 )
 
@@ -283,7 +286,7 @@ def main():
                 )
 
                 fitness_data, archive_data, generation_count, elapsed_time_total, interrupted = \
-                    trainer.run_full_iteration(optimizer, args.num_generations, args.pop_size, args.batch_size)
+                    trainer.run_full_iteration(optimizer, args.num_generations, args.pop_size, args.batch_size, min_generations=args.min_generations)
 
                 if fitness_data:
                     folder_path = logger.setup_multi_sentence_directory(sentence_id, run_id, run_timestamp)
@@ -303,6 +306,10 @@ def main():
                         num_generations=args.num_generations,
                         save_spectrograms=args.save_spectrograms,
                         save_graphs=args.save_graphs,
+                        seed_gt=False,
+                        min_generations=args.min_generations,
+                        gt_rms=gt_rms,
+                        target_rms=target_rms,
                     )
                     all_summaries.append(summary)
                     upload_folder_to_gcs(folder_path, args.gcs_bucket, args.gcs_prefix)
