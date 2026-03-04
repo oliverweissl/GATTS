@@ -12,6 +12,7 @@ Logging and visualization should be handled separately via RunLogger.
 
 import sys
 import time
+import ctypes
 import torch
 import numpy as np
 from tqdm.auto import tqdm
@@ -74,6 +75,7 @@ class AdversarialTrainer:
 
                     optimizer.assign_fitness(fitness_arrays, audio_per_individual)
                     optimizer.update()
+                    ctypes.cdll.LoadLibrary("libc.so.6").malloc_trim(0)
 
                     generation_matrix = np.column_stack(fitness_arrays)
                     fitness_history.append(generation_matrix)
