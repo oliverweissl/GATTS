@@ -105,7 +105,7 @@ class Optimizer(ABC):
         candidates = [
             OptimizerCandidate(
                 solution=solutions[i],
-                fitness=metrics[i],
+                fitness=M[i],
                 data=data[i],
             )
             for i in kept_indices
