@@ -54,7 +54,7 @@ class AdversarialTrainer:
                 print(f"[ERROR] {obj_enum.name} evaluation failed: {e}")
         return scores
 
-    def run_full_iteration(self, optimizer, num_generations, pop_size, batch_size, min_generations: int = 0) -> tuple[list[np.ndarray], list[np.ndarray], int, float, bool]:
+    def run_full_iteration(self, optimizer, num_generations, pop_size, batch_size, min_generations: int = 0) -> tuple[list[np.ndarray], list[np.ndarray], int, float, bool, int]:
 
         fitness_history = []
         archive_history = []
