@@ -83,16 +83,28 @@
     }
 
     function finishSurvey() {
-        let csvContent = "data:text/csv;charset=utf-8," + results.map(e => e.join(",")).join("\n");
-        const encodedUri = encodeURI(csvContent);
+    // PASTE YOUR GOOGLE WEB APP URL HERE
+    const scriptURL = "https://script.google.com/macros/s/AKfycbz_yeQJXp0Sr4LDENVBviqQ1xZ_WdLJBW5L-i9M3QTxArKUEMnLFOm2RjD9LOzehGth/exec";
 
+    document.getElementById('survey-container').innerHTML = `<h2>Submitting your answers...</h2>`;
+
+    fetch(scriptURL, {
+        method: 'POST',
+        mode: 'no-cors', // Important for Google Apps Script
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results: results })
+    })
+    .then(() => {
         document.getElementById('survey-container').innerHTML = `
-            <h2>Survey Complete!</h2>
-            <p>Thank you for participating. Please click the button below to download your results and send them back to the researcher.</p>
-            <a href="${encodedUri}" download="surveyed_results.csv"><button>Download surveyed.csv</button></a>
+            <h2>Done!</h2>
+            <p>Thank you. Your results have been saved directly to our spreadsheet.</p>
         `;
-    }
-
+    })
+    .catch(error => {
+        console.error('Error!', error.message);
+        document.getElementById('survey-container').innerHTML = `<h2>Error</h2><p>Please try again or contact the researcher.</p>`;
+    });
+}
     loadQuestion();
 </script>
 
