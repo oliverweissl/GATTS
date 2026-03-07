@@ -255,8 +255,8 @@
     const allClips = selectedClips;
 
     let currentIndex = 0;
-    // [Filename, Version, SentenceId, BucketType, Task, TextShown, UserResponse, MOS, Email]
-    let results = [["Filename", "Version", "SentenceId", "BucketType", "Task", "TextShown", "UserResponse", "MOS", "Email"]];
+    // [Filename, Category, Sentence_ID, BucketType, Task, Ground_Truth, Reference_Sentence, Transcribed_Sentence, MOS_Score, Email]
+    let results = [["Filename", "Category", "Sentence_ID", "BucketType", "Task", "Ground_Truth", "Reference_Sentence", "Transcribed_Sentence", "MOS_Score", "Email"]];
 
     if (localStorage.getItem('tts_survey_done')) {
         document.getElementById('intro-card').classList.remove('active');
@@ -341,15 +341,18 @@
     function nextQuestion() {
         const clip = allClips[currentIndex];
 
+        const bucket = clip.bucketType === "both_success" ? "success" : clip.bucketType;
+        const gt     = `"${clip.groundTruthText.replace(/"/g, '""')}"`;
+
         if (isPart1()) {
             const mos = document.querySelector('input[name="mos"]:checked')?.value;
             const transcription = document.getElementById('transcription').value.trim();
-            results.push([clip.file, clip.version, clip.sentenceId, clip.bucketType,
-                          "listen+rate", "", `"${transcription.replace(/"/g, '""')}"`, mos, ""]);
+            results.push([clip.file, clip.version, clip.sentenceId, bucket,
+                          "listen+rate", gt, "", `"${transcription.replace(/"/g, '""')}"`, mos, ""]);
         } else {
             const guess = document.getElementById('guess').value.trim();
-            results.push([clip.file, clip.version, clip.sentenceId, clip.bucketType,
-                          "guess", `"${clip.displayText.replace(/"/g, '""')}"`,
+            results.push([clip.file, clip.version, clip.sentenceId, bucket,
+                          "guess", gt, `"${clip.displayText.replace(/"/g, '""')}"`,
                           `"${guess.replace(/"/g, '""')}"`, "", ""]);
         }
 
@@ -397,7 +400,7 @@
 
     function finalSubmit() {
         const email = document.getElementById('user-email')?.value.trim() ?? "";
-        for (let i = 1; i < results.length; i++) results[i][8] = email;
+        for (let i = 1; i < results.length; i++) results[i][9] = email;
 
         document.getElementById('main-card').innerHTML = `<h2>Submitting…</h2>`;
 
