@@ -256,7 +256,7 @@
 
     // Enter in either textarea triggers Next
     document.getElementById('transcription').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); nextQuestion(); }
+        if (e.key === 'Enter') { e.preventDefault(); if (audioReady && mosReady) nextQuestion(); }
     });
     document.getElementById('guess').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); nextQuestion(); }
