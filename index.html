@@ -231,8 +231,9 @@
             version,
             sentenceId:      group.id,
             bucketType:      group.type,
-            displayText:     isGT ? group.gt_text : group[version + "_transcription"],
+            displayText:     isGT ? (group.gt_asr_text || group.gt_text) : group[version + "_transcription"],
             groundTruthText: group.gt_text,
+            gtAsrText:       group.gt_asr_text || group.gt_text,
             pesq:            isGT ? "" : group[version + "_pesq"],
             setOverlap:      isGT ? "" : group[version + "_set_overlap"],
         };

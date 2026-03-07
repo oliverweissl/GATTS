@@ -375,6 +375,7 @@ class RunLogger:
         min_generations: int = 0,
         gt_rms: float = None,
         target_rms: float = None,
+        gt_asr_text: str = "",
     ) -> dict:
         gpu_info = "CPU Only"
         if torch.cuda.is_available():
@@ -403,6 +404,7 @@ class RunLogger:
             },
             "text_data": {
                 "ground_truth_text": config_data.text_gt,
+                "gt_transcription": gt_asr_text,
                 "target_text": config_data.text_target if config_data.mode.name == "TARGETED" else target_asr_text,
                 "asr_transcription": text_best,
             },
@@ -488,9 +490,15 @@ class RunLogger:
             target_asr_texts, _ = asr_model.inference(target_audio_tensor.to(self.device))
             target_asr_text = target_asr_texts[0] if target_asr_texts else ""
 
+        # Transcribe ground truth audio
+        asr_model = self.asr_model.module if isinstance(self.asr_model, torch.nn.DataParallel) else self.asr_model
+        gt_audio_tensor = audio_gt.detach().cpu().unsqueeze(0) if audio_gt.dim() == 1 else audio_gt.detach().cpu()
+        gt_asr_texts, _ = asr_model.inference(gt_audio_tensor.to(self.device))
+        gt_asr_text = gt_asr_texts[0] if gt_asr_texts else ""
+
         self.save_audios(audio_gt, audio_target, audio_best)
         self.save_fitness_history_per_generation(fitness_data, archive_data)
-        summary = self.save_json_summary(text_best, best_candidate, optimizer, config_data, generation_count, elapsed_time_total, num_generations, sentence_id, run_id, run_timestamp, generation_found=generation_found, seed_target=seed_target, seed_gt=seed_gt, target_asr_text=target_asr_text, min_generations=min_generations, gt_rms=gt_rms, target_rms=target_rms)
+        summary = self.save_json_summary(text_best, best_candidate, optimizer, config_data, generation_count, elapsed_time_total, num_generations, sentence_id, run_id, run_timestamp, generation_found=generation_found, seed_target=seed_target, seed_gt=seed_gt, target_asr_text=target_asr_text, min_generations=min_generations, gt_rms=gt_rms, target_rms=target_rms, gt_asr_text=gt_asr_text)
 
         if save_torch_state:
             self.save_torch_state(text_best, best_candidate, config_data)
@@ -525,6 +533,7 @@ class RunLogger:
 
         text = summary.get("text_data", {})
         row["ground_truth_text"] = text.get("ground_truth_text")
+        row["gt_transcription"] = text.get("gt_transcription")
         row["target_text"] = text.get("target_text")
         row["asr_transcription"] = text.get("asr_transcription")
 

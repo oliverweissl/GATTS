@@ -167,10 +167,19 @@ def main():
         ]
 
         gt_text = str(tts_row.ground_truth_text)
+
+        # Read Whisper's transcription of the GT audio from the run summary
+        tts_summary_path = os.path.join(tts_run_dir, "run_summary.json")
+        gt_asr_text = gt_text  # fallback
+        if os.path.exists(tts_summary_path):
+            with open(tts_summary_path) as f:
+                gt_asr_text = json.load(f).get("text_data", {}).get("gt_transcription", gt_text)
+
         group = {
             "id": sid,
             "type": bucket,
             "gt_text": gt_text,
+            "gt_asr_text": gt_asr_text,
             "tts_transcription":      str(tts_row.asr_transcription),
             "waveform_transcription": str(wav_row.asr_transcription),
             "tts_pesq":               float(tts_row.pesq),
