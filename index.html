@@ -212,6 +212,8 @@
     const scriptURL = "https://script.google.com/macros/s/AKfycbz_yeQJXp0Sr4LDENVBviqQ1xZ_WdLJBW5L-i9M3QTxArKUEMnLFOm2RjD9LOzehGth/exec";
     const baseURL   = "https://raw.githubusercontent.com/Vorgesetzter/StyleTTS2/main/survey/";
 
+    const participantId = Math.random().toString(36).slice(2, 10).toUpperCase();
+
     function shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -429,7 +431,7 @@
     }
 
     function buildResults() {
-        const header = ["Filename", "Category", "Sentence_ID", "BucketType", "Task",
+        const header = ["Participant_ID", "Filename", "Category", "Sentence_ID", "BucketType", "Task",
                         "Ground_Truth", "Reference_Sentence", "Transcribed_Sentence",
                         "MOS_Score", "PESQ", "SET_OVERLAP", "Email"];
         const rows = allClips.map((clip, i) => {
@@ -437,12 +439,12 @@
             const bucket = clip.bucketType === "both_success" ? "success" : clip.bucketType;
             const gt     = `"${clip.groundTruthText.replace(/"/g, '""')}"`;
             if (i < 10) {
-                return [clip.file, clip.version, clip.sentenceId, bucket, "listen+rate",
+                return [participantId, clip.file, clip.version, clip.sentenceId, bucket, "listen+rate",
                         gt, `"${clip.displayText.replace(/"/g, '""')}"`,
                         `"${(ans.transcription || "").replace(/"/g, '""')}"`,
                         ans.mos || "", clip.pesq, clip.setOverlap, ""];
             } else {
-                return [clip.file, clip.version, clip.sentenceId, bucket, "guess",
+                return [participantId, clip.file, clip.version, clip.sentenceId, bucket, "guess",
                         gt, `"${clip.displayText.replace(/"/g, '""')}"`,
                         `"${(ans.guess || "").replace(/"/g, '""')}"`,
                         "", clip.pesq, clip.setOverlap, ""];
@@ -454,7 +456,7 @@
     function finalSubmit() {
         const email   = document.getElementById('user-email')?.value.trim() ?? "";
         const results = buildResults();
-        for (let i = 1; i < results.length; i++) results[i][11] = email;
+        for (let i = 1; i < results.length; i++) results[i][12] = email;
 
         document.getElementById('main-card').innerHTML = `<h2>Submitting…</h2>`;
 
