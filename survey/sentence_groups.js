@@ -5,6 +5,9 @@ const sentenceGroups = [
   {
     "id": 5,
     "type": "mixed",
+    "gt_text": "Rice is often served in round bowls.",
+    "tts_transcription": "Race is often served around bulls",
+    "waveform_transcription": "Im going to do a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit",
     "gt": "GT/gt_005.wav",
     "tts": "TTS/tts_005.wav",
     "waveform": "Waveform/waveform_005.wav"
@@ -12,6 +15,9 @@ const sentenceGroups = [
   {
     "id": 8,
     "type": "both_success",
+    "gt_text": "The hogs were fed chopped corn and garbage.",
+    "tts_transcription": "The hugs were faked up corn and garbage",
+    "waveform_transcription": "The hubs with the chopped corn and garlic",
     "gt": "GT/gt_008.wav",
     "tts": "TTS/tts_008.wav",
     "waveform": "Waveform/waveform_008.wav"
@@ -19,6 +25,9 @@ const sentenceGroups = [
   {
     "id": 11,
     "type": "both_success",
+    "gt_text": "The boy was there when the sun rose.",
+    "tts_transcription": "The boy was there when the son arose",
+    "waveform_transcription": "you",
     "gt": "GT/gt_011.wav",
     "tts": "TTS/tts_011.wav",
     "waveform": "Waveform/waveform_011.wav"
@@ -26,6 +35,9 @@ const sentenceGroups = [
   {
     "id": 22,
     "type": "both_success",
+    "gt_text": "The fish twisted and turned on the bent hook.",
+    "tts_transcription": "The fifth twisted and turned on the band folk",
+    "waveform_transcription": "Thank you",
     "gt": "GT/gt_022.wav",
     "tts": "TTS/tts_022.wav",
     "waveform": "Waveform/waveform_022.wav"
@@ -33,6 +45,9 @@ const sentenceGroups = [
   {
     "id": 25,
     "type": "mixed",
+    "gt_text": "The beauty of the view stunned the young boy.",
+    "tts_transcription": "The beauty of the view stumbles the unboy",
+    "waveform_transcription": "you",
     "gt": "GT/gt_025.wav",
     "tts": "TTS/tts_025.wav",
     "waveform": "Waveform/waveform_025.wav"
@@ -40,6 +55,9 @@ const sentenceGroups = [
   {
     "id": 26,
     "type": "mixed",
+    "gt_text": "Two blue fish swam in the tank.",
+    "tts_transcription": "Toad Lufus Swam in the tank",
+    "waveform_transcription": "Im gonna get you",
     "gt": "GT/gt_026.wav",
     "tts": "TTS/tts_026.wav",
     "waveform": "Waveform/waveform_026.wav"
@@ -47,6 +65,9 @@ const sentenceGroups = [
   {
     "id": 28,
     "type": "mixed",
+    "gt_text": "The colt reared and threw the tall rider.",
+    "tts_transcription": "The cold weird and through the tall rider",
+    "waveform_transcription": "The quote weird and threethetall writer",
     "gt": "GT/gt_028.wav",
     "tts": "TTS/tts_028.wav",
     "waveform": "Waveform/waveform_028.wav"
@@ -54,6 +75,9 @@ const sentenceGroups = [
   {
     "id": 30,
     "type": "both_success",
+    "gt_text": "Read verse out loud for pleasure.",
+    "tts_transcription": "Reverse out loud for pleasure",
+    "waveform_transcription": "Leadverse Out Loud for Pleshure",
     "gt": "GT/gt_030.wav",
     "tts": "TTS/tts_030.wav",
     "waveform": "Waveform/waveform_030.wav"
@@ -61,6 +85,9 @@ const sentenceGroups = [
   {
     "id": 43,
     "type": "both_success",
+    "gt_text": "Dimes showered down from all sides.",
+    "tts_transcription": "Times shallered down from all sides",
+    "waveform_transcription": "you",
     "gt": "GT/gt_043.wav",
     "tts": "TTS/tts_043.wav",
     "waveform": "Waveform/waveform_043.wav"
@@ -68,6 +95,9 @@ const sentenceGroups = [
   {
     "id": 46,
     "type": "both_success",
+    "gt_text": "The walled town was seized without a fight.",
+    "tts_transcription": "The world town was seen throughout a fight",
+    "waveform_transcription": "The hometown seems to have out of sight",
     "gt": "GT/gt_046.wav",
     "tts": "TTS/tts_046.wav",
     "waveform": "Waveform/waveform_046.wav"
@@ -75,6 +105,9 @@ const sentenceGroups = [
   {
     "id": 52,
     "type": "both_success",
+    "gt_text": "The fruit peel was cut in thick slices.",
+    "tts_transcription": "The fruit teal was cut into xlices",
+    "waveform_transcription": "You",
     "gt": "GT/gt_052.wav",
     "tts": "TTS/tts_052.wav",
     "waveform": "Waveform/waveform_052.wav"
@@ -82,6 +115,9 @@ const sentenceGroups = [
   {
     "id": 53,
     "type": "mixed",
+    "gt_text": "The Navy attacked the big task force.",
+    "tts_transcription": "The Navy attacked the Bictask Force",
+    "waveform_transcription": "Thank you",
     "gt": "GT/gt_053.wav",
     "tts": "TTS/tts_053.wav",
     "waveform": "Waveform/waveform_053.wav"
@@ -89,6 +125,9 @@ const sentenceGroups = [
   {
     "id": 58,
     "type": "mixed",
+    "gt_text": "The grass curled around the fence post.",
+    "tts_transcription": "The Grinescurled Around the Finns Post",
+    "waveform_transcription": "Thank you",
     "gt": "GT/gt_058.wav",
     "tts": "TTS/tts_058.wav",
     "waveform": "Waveform/waveform_058.wav"
@@ -96,6 +135,9 @@ const sentenceGroups = [
   {
     "id": 60,
     "type": "both_success",
+    "gt_text": "Men strive but seldom get rich.",
+    "tts_transcription": "Then strive but seldom better rich",
+    "waveform_transcription": "Thank you",
     "gt": "GT/gt_060.wav",
     "tts": "TTS/tts_060.wav",
     "waveform": "Waveform/waveform_060.wav"
@@ -103,6 +145,9 @@ const sentenceGroups = [
   {
     "id": 62,
     "type": "both_success",
+    "gt_text": "He ran half way to the hardware store.",
+    "tts_transcription": "He ran halfway to the Hardware Store",
+    "waveform_transcription": "He then halfway to the Hard Years School",
     "gt": "GT/gt_062.wav",
     "tts": "TTS/tts_062.wav",
     "waveform": "Waveform/waveform_062.wav"
@@ -110,6 +155,9 @@ const sentenceGroups = [
   {
     "id": 72,
     "type": "mixed",
+    "gt_text": "The gold vase is both rare and costly.",
+    "tts_transcription": "The bold race is both rare and costly",
+    "waveform_transcription": "The day of race is back where and closely",
     "gt": "GT/gt_072.wav",
     "tts": "TTS/tts_072.wav",
     "waveform": "Waveform/waveform_072.wav"
@@ -117,6 +165,9 @@ const sentenceGroups = [
   {
     "id": 77,
     "type": "both_success",
+    "gt_text": "The green moss grew over the stone well.",
+    "tts_transcription": "The green boss grew over the strong weld",
+    "waveform_transcription": "you",
     "gt": "GT/gt_077.wav",
     "tts": "TTS/tts_077.wav",
     "waveform": "Waveform/waveform_077.wav"
@@ -124,6 +175,9 @@ const sentenceGroups = [
   {
     "id": 87,
     "type": "mixed",
+    "gt_text": "A salt pickle tastes fine with ham.",
+    "tts_transcription": "Assault pickled tastes fine with ham",
+    "waveform_transcription": "you",
     "gt": "GT/gt_087.wav",
     "tts": "TTS/tts_087.wav",
     "waveform": "Waveform/waveform_087.wav"
@@ -131,6 +185,9 @@ const sentenceGroups = [
   {
     "id": 98,
     "type": "mixed",
+    "gt_text": "The birch trees were bare and lonely.",
+    "tts_transcription": "The birch trees were bare and lonely",
+    "waveform_transcription": "you",
     "gt": "GT/gt_098.wav",
     "tts": "TTS/tts_098.wav",
     "waveform": "Waveform/waveform_098.wav"
@@ -138,6 +195,9 @@ const sentenceGroups = [
   {
     "id": 100,
     "type": "mixed",
+    "gt_text": "Bring your problems to the wise chief.",
+    "tts_transcription": "Bring your problems to the Ys cheek",
+    "waveform_transcription": "When your problem is to the Y is key",
     "gt": "GT/gt_100.wav",
     "tts": "TTS/tts_100.wav",
     "waveform": "Waveform/waveform_100.wav"

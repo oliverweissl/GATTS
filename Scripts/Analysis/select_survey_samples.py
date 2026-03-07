@@ -142,7 +142,14 @@ def main():
             ("Waveform", f"waveform_{sid:03d}.wav", os.path.join(wav_run_dir, "best_mixed.wav"),   wav_row),
         ]
 
-        group = {"id": sid, "type": bucket}
+        gt_text = str(tts_row.ground_truth_text)
+        group = {
+            "id": sid,
+            "type": bucket,
+            "gt_text": gt_text,
+            "tts_transcription":      str(tts_row.asr_transcription),
+            "waveform_transcription": str(wav_row.asr_transcription),
+        }
 
         for method, fname, src, row in clips:
             dst = os.path.join(args.output_dir, method, fname)
@@ -159,7 +166,7 @@ def main():
                 "sentence_id": sid,
                 "method": method,
                 "bucket": bucket,
-                "ground_truth_text": str(tts_row.ground_truth_text),
+                "ground_truth_text": gt_text,
             }
             if row is not None:
                 entry.update({
@@ -167,6 +174,7 @@ def main():
                     "success": bool(row.success),
                     "pesq": float(row.pesq),
                     "set_overlap": float(row.set_overlap),
+                    "asr_transcription": str(row.asr_transcription),
                 })
             manifest.append(entry)
 

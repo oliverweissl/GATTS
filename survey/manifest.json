@@ -17,7 +17,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.1921975135803222,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "Race is often served around bulls"
   },
   {
     "filename": "waveform_005.wav",
@@ -29,7 +30,8 @@
     "run_id": 1,
     "success": false,
     "pesq": 0.689935564994812,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "Im going to do a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit of a little bit"
   },
   {
     "filename": "gt_008.wav",
@@ -49,7 +51,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.1972837924957275,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The hugs were faked up corn and garbage"
   },
   {
     "filename": "waveform_008.wav",
@@ -61,7 +64,8 @@
     "run_id": 2,
     "success": false,
     "pesq": 0.6862771272659302,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The hubs with the chopped corn and garlic"
   },
   {
     "filename": "gt_011.wav",
@@ -81,7 +85,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1967099666595458,
-    "set_overlap": 0.3333333333333333
+    "set_overlap": 0.3333333333333333,
+    "asr_transcription": "The boy was there when the son arose"
   },
   {
     "filename": "waveform_011.wav",
@@ -93,7 +98,8 @@
     "run_id": 1,
     "success": false,
     "pesq": 0.6690910339355469,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "you"
   },
   {
     "filename": "gt_022.wav",
@@ -113,7 +119,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.1927466869354248,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The fifth twisted and turned on the band folk"
   },
   {
     "filename": "waveform_022.wav",
@@ -125,7 +132,8 @@
     "run_id": 2,
     "success": false,
     "pesq": 0.6434016466140747,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "Thank you"
   },
   {
     "filename": "gt_025.wav",
@@ -145,7 +153,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.1836558818817139,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The beauty of the view stumbles the unboy"
   },
   {
     "filename": "waveform_025.wav",
@@ -157,7 +166,8 @@
     "run_id": 2,
     "success": false,
     "pesq": 0.6593948841094971,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "you"
   },
   {
     "filename": "gt_026.wav",
@@ -177,7 +187,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1795083999633788,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "Toad Lufus Swam in the tank"
   },
   {
     "filename": "waveform_026.wav",
@@ -189,7 +200,8 @@
     "run_id": 2,
     "success": false,
     "pesq": 0.305638027191162,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "Im gonna get you"
   },
   {
     "filename": "gt_028.wav",
@@ -209,7 +221,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1948390007019043,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The cold weird and through the tall rider"
   },
   {
     "filename": "waveform_028.wav",
@@ -221,7 +234,8 @@
     "run_id": 0,
     "success": false,
     "pesq": 0.6834899187088013,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "The quote weird and threethetall writer"
   },
   {
     "filename": "gt_030.wav",
@@ -241,7 +255,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.1945674419403076,
-    "set_overlap": 0.5
+    "set_overlap": 0.5,
+    "asr_transcription": "Reverse out loud for pleasure"
   },
   {
     "filename": "waveform_030.wav",
@@ -253,7 +268,8 @@
     "run_id": 1,
     "success": false,
     "pesq": 0.6851801156997681,
-    "set_overlap": 0.25
+    "set_overlap": 0.25,
+    "asr_transcription": "Leadverse Out Loud for Pleshure"
   },
   {
     "filename": "gt_043.wav",
@@ -273,7 +289,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.1865974903106689,
-    "set_overlap": 0.3333333333333333
+    "set_overlap": 0.3333333333333333,
+    "asr_transcription": "Times shallered down from all sides"
   },
   {
     "filename": "waveform_043.wav",
@@ -285,7 +302,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.0,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "you"
   },
   {
     "filename": "gt_046.wav",
@@ -305,7 +323,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.1789448738098145,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The world town was seen throughout a fight"
   },
   {
     "filename": "waveform_046.wav",
@@ -317,7 +336,8 @@
     "run_id": 0,
     "success": false,
     "pesq": 0.6886362552642822,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "The hometown seems to have out of sight"
   },
   {
     "filename": "gt_052.wav",
@@ -337,7 +357,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1998744487762451,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The fruit teal was cut into xlices"
   },
   {
     "filename": "waveform_052.wav",
@@ -349,7 +370,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1402316093444824,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "You"
   },
   {
     "filename": "gt_053.wav",
@@ -369,7 +391,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1711579799652099,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The Navy attacked the Bictask Force"
   },
   {
     "filename": "waveform_053.wav",
@@ -381,7 +404,8 @@
     "run_id": 2,
     "success": false,
     "pesq": 0.6061655521392822,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "Thank you"
   },
   {
     "filename": "gt_058.wav",
@@ -401,7 +425,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.199897575378418,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The Grinescurled Around the Finns Post"
   },
   {
     "filename": "waveform_058.wav",
@@ -413,7 +438,8 @@
     "run_id": 2,
     "success": false,
     "pesq": 0.655607008934021,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "Thank you"
   },
   {
     "filename": "gt_060.wav",
@@ -433,7 +459,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.1840197086334228,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "Then strive but seldom better rich"
   },
   {
     "filename": "waveform_060.wav",
@@ -445,7 +472,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.0248538970947265,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "Thank you"
   },
   {
     "filename": "gt_062.wav",
@@ -465,7 +493,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1667668342590331,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "He ran halfway to the Hardware Store"
   },
   {
     "filename": "waveform_062.wav",
@@ -477,7 +506,8 @@
     "run_id": 1,
     "success": false,
     "pesq": 0.6872193574905395,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "He then halfway to the Hard Years School"
   },
   {
     "filename": "gt_072.wav",
@@ -497,7 +527,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.1936003684997558,
-    "set_overlap": 0.5
+    "set_overlap": 0.5,
+    "asr_transcription": "The bold race is both rare and costly"
   },
   {
     "filename": "waveform_072.wav",
@@ -509,7 +540,8 @@
     "run_id": 1,
     "success": false,
     "pesq": 0.6915217161178588,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "The day of race is back where and closely"
   },
   {
     "filename": "gt_077.wav",
@@ -529,7 +561,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1537807464599609,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "The green boss grew over the strong weld"
   },
   {
     "filename": "waveform_077.wav",
@@ -541,7 +574,8 @@
     "run_id": 0,
     "success": false,
     "pesq": 0.5176044225692749,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "you"
   },
   {
     "filename": "gt_087.wav",
@@ -561,7 +595,8 @@
     "run_id": 1,
     "success": true,
     "pesq": 0.1809104919433594,
-    "set_overlap": 0.4
+    "set_overlap": 0.4,
+    "asr_transcription": "Assault pickled tastes fine with ham"
   },
   {
     "filename": "waveform_087.wav",
@@ -573,7 +608,8 @@
     "run_id": 0,
     "success": false,
     "pesq": 0.6275499343872071,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "you"
   },
   {
     "filename": "gt_098.wav",
@@ -593,7 +629,8 @@
     "run_id": 2,
     "success": true,
     "pesq": 0.1485065460205078,
-    "set_overlap": 0.25
+    "set_overlap": 0.25,
+    "asr_transcription": "The birch trees were bare and lonely"
   },
   {
     "filename": "waveform_098.wav",
@@ -605,7 +642,8 @@
     "run_id": 1,
     "success": false,
     "pesq": 0.6858961820602417,
-    "set_overlap": 0.0
+    "set_overlap": 0.0,
+    "asr_transcription": "you"
   },
   {
     "filename": "gt_100.wav",
@@ -625,7 +663,8 @@
     "run_id": 0,
     "success": true,
     "pesq": 0.1848387718200683,
-    "set_overlap": 0.5
+    "set_overlap": 0.5,
+    "asr_transcription": "Bring your problems to the Ys cheek"
   },
   {
     "filename": "waveform_100.wav",
@@ -637,6 +676,7 @@
     "run_id": 0,
     "success": false,
     "pesq": 0.6826889753341675,
-    "set_overlap": 0.25
+    "set_overlap": 0.25,
+    "asr_transcription": "When your problem is to the Y is key"
   }
 ]
