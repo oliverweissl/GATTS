@@ -34,7 +34,7 @@ from pymoo.algorithms.moo.nsga2 import NSGA2
 # Harvard Sentence Lists (IEEE, Rothauser et al. 1969)
 # Source: https://www.cs.columbia.edu/~hgs/audio/harvard.html
 # =============================================================================
-HARVARD_SENTENCES_OLD = [
+HARVARD_SENTENCES = [
     # List 1
     "Glue the sheet to the dark blue background.",
     "Rice is often served in round bowls.",
@@ -75,11 +75,6 @@ HARVARD_SENTENCES_OLD = [
     # List 10
     "The cigar burned a hole in the desk top.",
     "The birch trees were bare and lonely.",
-]
-
-HARVARD_SENTENCES= [
-    "The two met while playing on the sand.",
-    "A tame squirrel makes a nice pet."
 ]
 
 
