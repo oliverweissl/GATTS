@@ -385,13 +385,15 @@
         <div class="cer-row" id="cer-block"></div>
 
         <!-- Word highlighting legend -->
-        <div style="background:#f7f3ef; border:1px solid #e8e2db; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#6b5c50; line-height:1.8;">
-            <strong style="color:#4b3f35;">Word highlighting</strong> — <strong>checkwords</strong> are <strong>bold</strong>; function words (stopwords) are <span style="color:#a89f96;">grey</span>.
-            Checkwords are what remains after removing function words such as "the", "on", "a", and "is" using a stopword list — they carry semantic content and are the words evaluated by SET_OVERLAP.
-            <br>
-            <span style="background:#d4f0d4; border-radius:3px; padding:0 4px; font-weight:700;">green</span> = checkword found in both GT and ASR &nbsp;·&nbsp;
-            <span style="background:#fde8e8; border-radius:3px; padding:0 4px; font-weight:700;">red</span> = checkword missing from the other text.
-            Note: highlighting uses exact matching; SET_OVERLAP additionally applies lemmatisation.
+        <div style="background:#f7f3ef; border:1px solid #e8e2db; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#6b5c50;">
+            <strong style="color:#4b3f35; display:block; margin-bottom:6px;">Word Highlighting</strong>
+            <ul style="margin:0; padding-left:18px; line-height:1.9;">
+                <li><strong style="color:#4b3f35;">Bold</strong> = checkword: words remaining after removing function words ("the", "on", "a", "is", ...) via a stopword list. These carry semantic content and are what SET_OVERLAP evaluates.</li>
+                <li><span style="color:#a89f96;">Grey</span> = stopword (function word, not evaluated by SET_OVERLAP)</li>
+                <li><span style="background:#d4f0d4; border-radius:3px; padding:0 4px; font-weight:700;">Green</span> = checkword found in both GT and ASR</li>
+                <li><span style="background:#fde8e8; border-radius:3px; padding:0 4px; font-weight:700;">Red</span> = checkword missing from the other text</li>
+                <li style="color:#a89f96;">Highlighting uses exact matching; SET_OVERLAP additionally applies lemmatisation</li>
+            </ul>
         </div>
 
         <div class="answer-row">
