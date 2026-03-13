@@ -244,6 +244,73 @@
 
         .metric-value.met   { color: #1a6e1a; }
         .metric-value.unmet { color: #9e1a1a; }
+
+        /* Content word highlighting */
+        .content-word { font-weight: 700; color: #4b3f35; }
+        .stop-word    { color: #a89f96; }
+        .word-match   { background: #d4f0d4; border-radius: 3px; padding: 0 2px; }
+        .word-miss    { background: #fde8e8; border-radius: 3px; padding: 0 2px; }
+        .highlight-legend {
+            font-size: 11px; color: #8c7e73; margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .highlight-legend span { display: flex; align-items: center; gap: 4px; }
+        .legend-dot {
+            display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+        }
+
+        /* Info tooltip */
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #c8bdb5;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            font-style: normal;
+            cursor: default;
+            margin-left: 5px;
+            position: relative;
+            vertical-align: middle;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .info-icon .tooltip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3a3028;
+            color: #f7f3ef;
+            font-size: 12px;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            line-height: 1.5;
+            padding: 10px 12px;
+            border-radius: 6px;
+            width: 240px;
+            white-space: normal;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+        .info-icon .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #3a3028;
+        }
+        .info-icon:hover .tooltip,
+        .info-icon.open .tooltip { display: block; }
+        .answer-box .label { display: flex; align-items: center; }
     </style>
 </head>
 <body>
@@ -285,7 +352,7 @@
 
     <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:18px;">
         <h2 style="margin:0;" id="card-title">—</h2>
-        <span id="success-badge" class="success-badge"></span>
+        <span id="success-badge" class="success-badge" title="Attack success = PESQ ≤ 0.20 AND SET_OVERLAP ≤ 0.50 both met"></span>
     </div>
 
     <!-- Audio -->
@@ -319,8 +386,17 @@
 
         <div class="answer-row">
             <div class="answer-box full-width">
-                <div class="label">Ground Truth (original sentence)</div>
+                <div class="label">Ground Truth (original sentence)
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">The original Harvard sentence the TTS model was given. Content words (nouns, verbs, adjectives, adverbs) are bold; stop words are grey. Green highlight = word also found in ASR transcript. Red highlight = content word missing from ASR transcript.</span>
+                    </span>
+                </div>
                 <div class="value" id="ans-gt"></div>
+                <div class="highlight-legend">
+                    <span><span class="legend-dot" style="background:#d4f0d4;"></span> matched content word</span>
+                    <span><span class="legend-dot" style="background:#fde8e8;"></span> missing from ASR</span>
+                    <span style="color:#a89f96;">grey = stop word</span>
+                </div>
             </div>
         </div>
 
@@ -337,12 +413,20 @@
 
         <div class="answer-row">
             <div class="answer-box">
-                <div class="label">UTMOS (adversarial)</div>
+                <div class="label">UTMOS (adversarial)
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">UTMOS is an automatic MOS predictor trained on human speech quality ratings. It estimates naturalness on a 1–5 scale without human listeners. A score ≥ 3.5 indicates the adversarial audio still sounds natural.</span>
+                    </span>
+                </div>
                 <div class="metric-value" id="ans-utmos-best"></div>
                 <div class="metric-sub">Predicted MOS · ≥3.5 = naturalness preserved</div>
             </div>
             <div class="answer-box">
-                <div class="label">UTMOS (ground truth)</div>
+                <div class="label">UTMOS (ground truth)
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">UTMOS score of the unmodified ground truth recording. Used as a reference to see how much naturalness was lost by the adversarial attack.</span>
+                    </span>
+                </div>
                 <div class="metric-value" id="ans-utmos-gt"></div>
                 <div class="metric-sub">Predicted MOS · reference</div>
             </div>
@@ -350,12 +434,20 @@
 
         <div class="answer-row">
             <div class="answer-box">
-                <div class="label">PESQ</div>
+                <div class="label">PESQ
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">Perceptual Evaluation of Speech Quality. Measures perceptual distortion between the adversarial and ground truth audio. Here it is normalised to [0, 1] and inverted: 0 = identical to GT, 1 = maximally distorted. Success threshold ≤ 0.20 means the audio remains perceptually close to the original.</span>
+                    </span>
+                </div>
                 <div class="metric-value" id="ans-pesq"></div>
                 <div class="metric-sub">Perceptual quality · ≤0.20 = success</div>
             </div>
             <div class="answer-box">
-                <div class="label">SET_OVERLAP</div>
+                <div class="label">SET_OVERLAP
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">Fraction of content words (nouns, verbs, adjectives, adverbs) shared between the ground truth and the ASR transcription of the adversarial audio, after lemmatisation. 0 = no shared content words (full attack), 1 = identical. Success threshold ≤ 0.50.</span>
+                    </span>
+                </div>
                 <div class="metric-value" id="ans-overlap"></div>
                 <div class="metric-sub">Content-word overlap · ≤0.50 = success</div>
             </div>
@@ -363,7 +455,11 @@
 
         <div class="answer-row">
             <div class="answer-box full-width">
-                <div class="label">SBERT Semantic Similarity</div>
+                <div class="label">SBERT Semantic Similarity
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">Cosine similarity between Sentence-BERT embeddings of the ground truth text and the ASR transcription of the adversarial audio. Measures how much the meaning diverged. 1 = identical meaning, 0 = completely unrelated. Success threshold ≤ 0.60 indicates meaningful semantic divergence.</span>
+                    </span>
+                </div>
                 <div class="metric-value" id="ans-sbert"></div>
                 <div class="metric-sub">ASR vs ground truth · ≤0.60 = semantic divergence (success)</div>
             </div>
@@ -466,9 +562,9 @@
         document.getElementById('answer-panel').classList.remove('revealed');
         document.getElementById('reveal-btn').textContent = 'Reveal Answer';
 
-        // Fill answer fields
-        document.getElementById('ans-gt').textContent  = s.ground_truth_text;
-        document.getElementById('ans-asr').textContent = s.asr_transcription;
+        // Fill answer fields with content word highlighting
+        document.getElementById('ans-gt').innerHTML  = highlightText(s.ground_truth_text, s.asr_transcription);
+        document.getElementById('ans-asr').innerHTML = highlightText(s.asr_transcription, s.ground_truth_text);
 
         setMetric('ans-utmos-best', s.utmos_best.toFixed(4), s.utmos_best >= 3.5);
         setMetric('ans-utmos-gt',   s.utmos_gt.toFixed(4),   null);   // reference only
@@ -483,6 +579,54 @@
         document.getElementById('next-btn').disabled = (pos === filteredIndices.length - 1);
 
         window.scrollTo(0, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Content word highlighting
+    // -----------------------------------------------------------------------
+    const STOP_WORDS = new Set([
+        'a','an','the','and','but','or','nor','for','yet','so','if','as','at',
+        'by','in','of','on','to','up','it','its','be','is','are','was','were',
+        'been','being','have','has','had','do','does','did','will','would',
+        'could','should','may','might','shall','can','need','must','am',
+        'i','me','my','we','our','you','your','he','him','his','she','her',
+        'they','them','their','this','that','these','those','what','which',
+        'who','whom','when','where','why','how','all','each','both','few',
+        'more','most','other','some','no','not','only','same','too','very',
+        'just','with','from','into','through','during','before','after',
+        'above','below','between','out','off','over','under','again','then',
+        'there','here','about','also','than','such','even','though','although',
+        'while','because','since','until','whether','whose','whom','s','t',
+        'its','it\'s','don\'t','doesn\'t','didn\'t','won\'t','can\'t',
+        'couldn\'t','shouldn\'t','aren\'t','isn\'t','wasn\'t','weren\'t'
+    ]);
+
+    function isContentWord(w) {
+        return !STOP_WORDS.has(w.toLowerCase().replace(/[^a-z']/g, ''));
+    }
+
+    function tokenize(text) {
+        // Split into word tokens and non-word tokens (punctuation/spaces)
+        return text.split(/(\s+|[^\w']+)/).filter(t => t.length > 0);
+    }
+
+    function contentWordSet(text) {
+        return new Set(
+            text.split(/\s+/)
+                .map(w => w.toLowerCase().replace(/[^a-z]/g, ''))
+                .filter(w => w && isContentWord(w))
+        );
+    }
+
+    function highlightText(text, otherText) {
+        const otherWords = contentWordSet(otherText);
+        return tokenize(text).map(token => {
+            const clean = token.toLowerCase().replace(/[^a-z]/g, '');
+            if (!clean || /^\s+$/.test(token)) return token;
+            if (!isContentWord(token)) return `<span class="stop-word">${token}</span>`;
+            const cls = otherWords.has(clean) ? 'content-word word-match' : 'content-word word-miss';
+            return `<span class="${cls}">${token}</span>`;
+        }).join('');
     }
 
     // -----------------------------------------------------------------------
@@ -546,15 +690,15 @@
 
         block.innerHTML = `
             <div class="answer-box full-width" style="margin-bottom:16px;">
-                <div class="label">Your CER (Character Error Rate) · threshold: ${(CER_THRESHOLD*100).toFixed(1)}% (mean + 1σ)</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">
+                <div class="label">Your CER vs Ground Truth · threshold: ${(CER_THRESHOLD*100).toFixed(1)}% (mean + 1σ)
+                    <span class="info-icon" onclick="this.classList.toggle('open')">i
+                        <span class="tooltip">Character Error Rate: Levenshtein edit distance at character level divided by reference length (alphabet-only, lowercased). Threshold 16.42% = mean CER of GT recordings + 1 standard deviation. Above this threshold suggests the audio was hard to transcribe accurately.</span>
+                    </span>
+                </div>
+                <div style="margin-top:10px;">
                     <div class="cer-box">
                         <div class="cer-score ${cerColorClass(cerGT)}">${(cerGT * 100).toFixed(1)}%</div>
                         <div class="cer-detail">vs <strong>Ground Truth</strong><br>${cerLabel(cerGT)}</div>
-                    </div>
-                    <div class="cer-box">
-                        <div class="cer-score ${cerColorClass(cerASR)}">${(cerASR * 100).toFixed(1)}%</div>
-                        <div class="cer-detail">vs <strong>ASR transcript</strong><br>${cerLabel(cerASR)}</div>
                     </div>
                 </div>
             </div>`;
