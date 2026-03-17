@@ -11,9 +11,41 @@ import librosa
 import librosa.display
 import whisper
 
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sentence_transformers import SentenceTransformer, util as st_util
+from huggingface_hub import hf_hub_download
+
+nltk.download("stopwords", quiet=True)
+nltk.download("wordnet",   quiet=True)
+_STOPWORDS  = set(stopwords.words("english"))
+_LEMMATIZER = WordNetLemmatizer()
+
+
+def _lemmatize_word(word: str) -> str:
+    for pos in ("a", "v", "n", "r"):
+        lemma = _LEMMATIZER.lemmatize(word, pos=pos)
+        if lemma != word:
+            return lemma
+    return word
+
+
+def _recompute_set_overlap(gt: str, asr: str) -> float:
+    clean_gt  = re.sub(r"[^\w\s]", "", gt.lower())
+    gt_words  = {_lemmatize_word(w) for w in set(clean_gt.split()) - _STOPWORDS}
+    if not gt_words:
+        return 1.0
+    clean_asr = re.sub(r"[^\w\s]", "", (asr or "").lower())
+    asr_words = {_lemmatize_word(w) for w in set(clean_asr.split()) - _STOPWORDS}
+    return min(len(gt_words & asr_words) / len(gt_words), 1.0)
+
 # Local Imports
 from helper import save_audio
 from Trainer.GraphPlotter import GraphPlotter
+
+_SENTENCE_MODEL_NAME = "all-MiniLM-L6-v2"
 
 
 def get_pareto_mask(fitness_matrix):
@@ -50,6 +82,37 @@ class RunLogger:
 
         # Initialize Directory
         self.folder_path = None
+
+        # Sentence embedding model for semantic distance metric
+        self._sentence_model = SentenceTransformer(_SENTENCE_MODEL_NAME, device=device)
+
+        # SQUIM_SUBJECTIVE naturalness model (predicts MOS [1,5] with clean reference)
+        from torchaudio.pipelines import SQUIM_SUBJECTIVE
+        self._squim_model = SQUIM_SUBJECTIVE.get_model().to(device)
+        self._squim_model.eval()
+
+    def _compute_mos(self, audio, ref_audio, src_sr: int = 24000) -> float:
+        """Returns predicted MOS [1, 5] using ref_audio as the clean reference."""
+        import torchaudio.functional as AF
+
+        def prepare(a):
+            t = torch.as_tensor(a, dtype=torch.float32, device=self.device)
+            if t.dim() == 1:
+                t = t.unsqueeze(0)
+            if t.requires_grad:
+                t = t.detach()
+            if src_sr != 16000:
+                t = AF.resample(t, src_sr, 16000)
+            return t
+
+        with torch.no_grad():
+            mos = self._squim_model(prepare(audio), prepare(ref_audio))
+        return round(float(mos[0].item()), 4)
+
+    def _semantic_similarity(self, text_a: str, text_b: str) -> float:
+        """Cosine similarity between sentence embeddings (0 = different, 1 = identical)."""
+        emb = self._sentence_model.encode([text_a, text_b], convert_to_tensor=True)
+        return round(float(st_util.cos_sim(emb[0], emb[1]).item()), 6)
 
     def save_audios(self, audio_gt, audio_target, audio_best_mixed):
 
@@ -382,6 +445,8 @@ class RunLogger:
         gt_rms: float = None,
         target_rms: float = None,
         gt_asr_text: str = "",
+        utmos_best: float = None,
+        utmos_gt: float = None,
     ) -> dict:
         gpu_info = "CPU Only"
         if torch.cuda.is_available():
@@ -413,6 +478,7 @@ class RunLogger:
                 "gt_transcription": gt_asr_text,
                 "target_text": config_data.text_target if config_data.mode.name == "TARGETED" else target_asr_text,
                 "asr_transcription": text_best,
+                "semantic_similarity": self._semantic_similarity(config_data.text_gt, text_best),
             },
             "success_metrics": {
                 "success": bool(success),
@@ -448,6 +514,10 @@ class RunLogger:
                 "best_mixed_audio": "best_mixed.wav",
                 "ground_truth_audio": "ground_truth.wav",
                 "fitness_history_csv": "fitness_history.csv",
+            },
+            "naturalness_scores": {
+                "utmos_best": utmos_best,
+                "utmos_gt":   utmos_gt,
             },
         }
 
@@ -502,9 +572,12 @@ class RunLogger:
         gt_asr_texts, _ = asr_model.inference(gt_audio_tensor.to(self.device))
         gt_asr_text = gt_asr_texts[0] if gt_asr_texts else ""
 
+        utmos_best = self._compute_mos(audio_best, audio_gt)
+        utmos_gt   = self._compute_mos(audio_gt,   audio_gt)
+
         self.save_audios(audio_gt, audio_target, audio_best)
         self.save_fitness_history_per_generation(fitness_data, archive_data)
-        summary = self.save_json_summary(text_best, best_candidate, optimizer, config_data, generation_count, elapsed_time_total, num_generations, sentence_id, run_id, run_timestamp, generation_found=generation_found, seed_target=seed_target, seed_gt=seed_gt, target_asr_text=target_asr_text, min_generations=min_generations, gt_rms=gt_rms, target_rms=target_rms, gt_asr_text=gt_asr_text)
+        summary = self.save_json_summary(text_best, best_candidate, optimizer, config_data, generation_count, elapsed_time_total, num_generations, sentence_id, run_id, run_timestamp, generation_found=generation_found, seed_target=seed_target, seed_gt=seed_gt, target_asr_text=target_asr_text, min_generations=min_generations, gt_rms=gt_rms, target_rms=target_rms, gt_asr_text=gt_asr_text, utmos_best=utmos_best, utmos_gt=utmos_gt)
 
         if save_torch_state:
             self.save_torch_state(text_best, best_candidate, config_data)
@@ -542,6 +615,7 @@ class RunLogger:
         row["gt_transcription"] = text.get("gt_transcription")
         row["target_text"] = text.get("target_text")
         row["asr_transcription"] = text.get("asr_transcription")
+        row["semantic_similarity"] = text.get("semantic_similarity")
 
         success = summary.get("success_metrics", {})
         row["success"] = success.get("success")
@@ -549,6 +623,16 @@ class RunLogger:
             row[f"score_{obj}"] = score
         for obj, threshold in success.get("thresholds", {}).items():
             row[f"threshold_{obj}"] = threshold
+
+        stored_so = success.get("fitness_scores", {}).get("SET_OVERLAP")
+        recomp_so = _recompute_set_overlap(
+            text.get("ground_truth_text", ""),
+            text.get("asr_transcription", ""),
+        )
+        row["set_overlap_recomputed"] = recomp_so
+        row["set_overlap_mismatch"]   = (
+            stored_so is not None and abs(stored_so - recomp_so) > 0.05
+        )
 
         eff = summary.get("efficiency_metrics", {})
         row["generation_count"] = eff.get("generation_count")
@@ -567,6 +651,10 @@ class RunLogger:
         sol = summary.get("final_solution", {})
         row["generation_found"] = sol.get("generation_found")
         row["pareto_front_size"] = len(summary.get("pareto_front", []))
+
+        nat = summary.get("naturalness_scores", {})
+        row["utmos_best"] = nat.get("utmos_best")
+        row["utmos_gt"]   = nat.get("utmos_gt")
 
         return row
 

@@ -11,6 +11,9 @@ Graphs produced:
   7. convergence_curve_failed.png — same for failed runs only
   8. example_run.png            — composite of graphs for the median-convergence run
   9. comparison_table.png       — GT text vs ASR transcription for successful runs
+ 10. semantic_similarity_all.png — cosine similarity for every run, coloured by success
+ 11. iqr_boxplots.png           — IQR box plots for semantic_similarity, SET_OVERLAP, PESQ
+ 12. utmos_scores.png          — UTMOS MOS scores: GT vs adversarial, grouped by success/failure
 
 Usage:
     python Scripts/Analysis/analyze_results.py outputs/results/20260302_1006
@@ -19,6 +22,7 @@ Usage:
 """
 
 import os
+import re
 import json
 import argparse
 import textwrap
@@ -29,6 +33,33 @@ import matplotlib.patches as mpatches
 import matplotlib.image as mpimg
 from collections import defaultdict
 from pathlib import Path
+
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+nltk.download("stopwords", quiet=True)
+nltk.download("wordnet",   quiet=True)
+_STOPWORDS  = set(stopwords.words("english"))
+_LEMMATIZER = WordNetLemmatizer()
+
+
+def _lemmatize_word(word: str) -> str:
+    for pos in ("a", "v", "n", "r"):
+        lemma = _LEMMATIZER.lemmatize(word, pos=pos)
+        if lemma != word:
+            return lemma
+    return word
+
+
+def _set_overlap(gt: str, asr: str) -> float:
+    clean_gt  = re.sub(r"[^\w\s]", "", gt.lower())
+    gt_words  = {_lemmatize_word(w) for w in set(clean_gt.split()) - _STOPWORDS}
+    if not gt_words:
+        return 1.0
+    clean_asr = re.sub(r"[^\w\s]", "", (asr or "").lower())
+    asr_words = {_lemmatize_word(w) for w in set(clean_asr.split()) - _STOPWORDS}
+    return min(len(gt_words & asr_words) / len(gt_words), 1.0)
 
 
 PESQ_THRESHOLD        = 0.2
@@ -57,6 +88,7 @@ def load_results(results_dir: str) -> pd.DataFrame:
         eff      = summary.get("efficiency_metrics", {})
         algo     = summary.get("algorithm_parameters", {})
         solution = summary.get("final_solution", {})
+        nat      = summary.get("naturalness_scores", {})
 
         records.append({
             "sentence_id":          meta.get("sentence_id"),
@@ -65,9 +97,14 @@ def load_results(results_dir: str) -> pd.DataFrame:
             "json_path":            str(json_path),
             "ground_truth_text":    text.get("ground_truth_text", ""),
             "asr_transcription":    text.get("asr_transcription", ""),
+            "semantic_similarity":  text.get("semantic_similarity"),
             "success":              bool(success.get("success", False)),
             "pesq":                 success.get("fitness_scores", {}).get("PESQ"),
             "set_overlap":          success.get("fitness_scores", {}).get("SET_OVERLAP"),
+            "set_overlap_recomputed": _set_overlap(
+                text.get("ground_truth_text", ""),
+                text.get("asr_transcription", ""),
+            ),
             "generation_count":     eff.get("generation_count"),
             "elapsed_time_seconds": eff.get("elapsed_time_seconds"),
             "generation_found":     solution.get("generation_found"),
@@ -75,12 +112,19 @@ def load_results(results_dir: str) -> pd.DataFrame:
             "num_generations":      algo.get("num_generations"),
             "gt_rms":               algo.get("gt_rms"),
             "target_rms":           algo.get("target_rms"),
+            "utmos_best":           nat.get("utmos_best"),
+            "utmos_gt":             nat.get("utmos_gt"),
         })
 
     df = pd.DataFrame(records)
     if df.empty:
         return df
-    return df.sort_values(["sentence_id", "run_id"]).reset_index(drop=True)
+    df = df.sort_values(["sentence_id", "run_id"]).reset_index(drop=True)
+    df["set_overlap_mismatch"] = (
+        df["set_overlap"].notna() &
+        (df["set_overlap"] - df["set_overlap_recomputed"]).abs().gt(0.05)
+    )
+    return df
 
 
 def load_fitness_histories(results_dir: str, df: pd.DataFrame) -> dict:
@@ -461,7 +505,7 @@ def plot_example_run(df: pd.DataFrame, output_dir: str, example_run: str = None)
         ("pareto_evolution.png",      "Pareto Front Evolution"),
         ("hypervolume_convergence.png","Hypervolume Convergence"),
         ("mean_fitness_stack.png",    "Mean Fitness per Generation"),
-        ("minimal_fitness_stack.png", "Best Fitness per Generation"),
+        ("difference_spectrogram.png", "Difference Spectrogram"),
     ]
 
     images = [(title, run_dir / fname) for fname, title in graph_files]
@@ -567,6 +611,207 @@ def plot_comparison_table(df: pd.DataFrame, output_dir: str, n_rows: int = 12):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Graph 10 — All semantic distances per run
+# ─────────────────────────────────────────────────────────────────────────────
+
+def plot_semantic_distance_all(df: pd.DataFrame, output_dir: str):
+    if "semantic_similarity" not in df.columns or df["semantic_similarity"].isna().all():
+        print("[Skip] No semantic_similarity data available.")
+        return
+
+    data = df.dropna(subset=["semantic_similarity"]).copy()
+    data = data.sort_values(["sentence_id", "run_id"])
+
+    # Use a sequential index as x so runs are evenly spaced
+    data = data.reset_index(drop=True)
+    x = data.index.values
+
+    success_mask = data["success"].astype(bool)
+
+    fig, ax = plt.subplots(figsize=(max(12, len(data) * 0.12), 5))
+
+    ax.scatter(x[~success_mask], data.loc[~success_mask, "semantic_similarity"],
+               color=COLOR_FAIL,    s=30, alpha=0.75, edgecolors="none",
+               label=f"Failure ({(~success_mask).sum()})", zorder=3)
+    ax.scatter(x[success_mask],  data.loc[success_mask,  "semantic_similarity"],
+               color=COLOR_SUCCESS, s=30, alpha=0.75, edgecolors="none",
+               label=f"Success ({success_mask.sum()})", zorder=3)
+
+    # Mean and median reference lines
+    mean_val   = data["semantic_similarity"].mean()
+    median_val = data["semantic_similarity"].median()
+    ax.axhline(mean_val,   color=COLOR_PESQ,   linestyle="--", linewidth=1.5,
+               label=f"Mean: {mean_val:.3f}")
+    ax.axhline(median_val, color=COLOR_PARTIAL, linestyle="--", linewidth=1.5,
+               label=f"Median: {median_val:.3f}")
+
+    # Shade sentence boundaries to aid readability
+    sentence_ids = data["sentence_id"].values
+    boundaries   = np.where(np.diff(sentence_ids) != 0)[0] + 1
+    for i, b in enumerate(boundaries):
+        if i % 2 == 0:
+            left  = boundaries[i - 1] if i > 0 else 0
+            right = b
+            ax.axvspan(left, right, color="gray", alpha=0.06, zorder=1)
+
+    ax.set_xlabel("Run (ordered by sentence_id, run_id)", fontsize=11)
+    ax.set_ylabel("Semantic Similarity (↓ = attack more effective)", fontsize=11)
+    ax.set_title("Sentence Embedding Cosine Similarity — All Runs", fontsize=14, fontweight="bold")
+    ax.set_xlim(-1, len(data))
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=10, loc="upper right")
+    ax.grid(True, alpha=0.3, linestyle="--", axis="y")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "semantic_similarity_all.png"), dpi=200, bbox_inches="tight")
+    print("[Saved] semantic_similarity_all.png")
+    plt.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Graph 11 — IQR box plots for continuous metrics
+# ─────────────────────────────────────────────────────────────────────────────
+
+def plot_iqr(df: pd.DataFrame, output_dir: str):
+    metrics = [
+        ("semantic_similarity", "Semantic Similarity (↓ = attack effective)", None),
+        ("set_overlap",       "SET_OVERLAP (↓ better)",       SET_OVERLAP_THRESHOLD),
+        ("pesq",              "PESQ (↓ better)",              PESQ_THRESHOLD),
+    ]
+
+    # Drop metrics not present in this dataset
+    metrics = [(col, label, thr) for col, label, thr in metrics if col in df.columns and df[col].notna().any()]
+    if not metrics:
+        print("[Skip] No numeric metrics available for IQR plot.")
+        return
+
+    n = len(metrics)
+    fig, axes = plt.subplots(1, n, figsize=(5 * n, 6))
+    if n == 1:
+        axes = [axes]
+
+    groups       = [df[df["success"]], df[~df["success"]]]
+    group_labels = ["Success", "Failure"]
+    group_colors = [COLOR_SUCCESS, COLOR_FAIL]
+
+    for ax, (col, label, threshold) in zip(axes, metrics):
+        data        = [g[col].dropna().values for g in groups]
+        positions   = [1, 2]
+
+        bp = ax.boxplot(
+            data,
+            positions=positions,
+            widths=0.5,
+            patch_artist=True,
+            medianprops=dict(color="white", linewidth=2.5),
+            whiskerprops=dict(linewidth=1.5),
+            capprops=dict(linewidth=1.5),
+            flierprops=dict(marker="o", markersize=4, alpha=0.5, linestyle="none"),
+        )
+
+        for patch, color in zip(bp["boxes"], group_colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.75)
+        for flier, color in zip(bp["fliers"], group_colors):
+            flier.set_markerfacecolor(color)
+            flier.set_markeredgecolor(color)
+
+        # Annotate IQR values
+        for pos, grp_data, color in zip(positions, data, group_colors):
+            if len(grp_data) == 0:
+                continue
+            q1, med, q3 = np.percentile(grp_data, [25, 50, 75])
+            iqr = q3 - q1
+            ax.text(pos, q3 + 0.02, f"IQR={iqr:.3f}", ha="center", va="bottom",
+                    fontsize=8.5, color=color, fontweight="bold")
+
+        if threshold is not None:
+            ax.axhline(threshold, color="black", linestyle=":", linewidth=1.5,
+                       alpha=0.6, label=f"Threshold ({threshold})")
+            ax.legend(fontsize=9)
+
+        ax.set_xticks(positions)
+        ax.set_xticklabels(
+            [f"{l}\n(n={len(g[col].dropna())})" for l, g in zip(group_labels, groups)],
+            fontsize=10,
+        )
+        ax.set_ylabel(label, fontsize=11)
+        ax.set_title(label, fontsize=12, fontweight="bold")
+        ax.set_ylim(bottom=0)
+        ax.grid(True, alpha=0.3, linestyle="--", axis="y")
+
+    fig.suptitle("Metric Distributions with IQR — Success vs Failure",
+                 fontsize=13, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "iqr_boxplots.png"), dpi=200, bbox_inches="tight")
+    print("[Saved] iqr_boxplots.png")
+    plt.close()
+
+
+def plot_utmos(df: pd.DataFrame, output_dir: str):
+    """Graph 12: UTMOS MOS scores — GT vs adversarial, grouped by success/failure."""
+    sub = df.dropna(subset=["utmos_best", "utmos_gt"])
+    if sub.empty:
+        print("[Skip] plot_utmos: no utmos data found.")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("UTMOS Naturalness Scores (1=worst, 5=best)", fontsize=13, fontweight="bold")
+
+    # ── Left: box plot GT vs adversarial by success ──────────────────────────
+    ax = axes[0]
+    groups = {
+        ("GT",       True):  sub.loc[sub["success"],  "utmos_gt"].dropna(),
+        ("GT",       False): sub.loc[~sub["success"], "utmos_gt"].dropna(),
+        ("Adversarial", True):  sub.loc[sub["success"],  "utmos_best"].dropna(),
+        ("Adversarial", False): sub.loc[~sub["success"], "utmos_best"].dropna(),
+    }
+    positions = [1, 2, 4, 5]
+    colors    = [COLOR_SUCCESS, COLOR_FAIL, COLOR_SUCCESS, COLOR_FAIL]
+    labels    = ["GT\n(success)", "GT\n(fail)", "Adv.\n(success)", "Adv.\n(fail)"]
+    bp = ax.boxplot(
+        [g.values for g in groups.values()],
+        positions=positions,
+        patch_artist=True,
+        widths=0.6,
+        medianprops=dict(color="black", linewidth=2),
+    )
+    for patch, color in zip(bp["boxes"], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_ylabel("MOS (1–5)")
+    ax.set_ylim(1, 5)
+    ax.set_title("Distribution by success/failure")
+    ax.axvline(3, color="gray", linestyle="--", linewidth=0.8)
+
+    # ── Right: scatter GT vs adversarial ─────────────────────────────────────
+    ax = axes[1]
+    for success, color, label in [(True, COLOR_SUCCESS, "Success"), (False, COLOR_FAIL, "Failure")]:
+        mask = sub["success"] == success
+        ax.scatter(
+            sub.loc[mask, "utmos_gt"],
+            sub.loc[mask, "utmos_best"],
+            c=color, alpha=0.6, s=30, label=label, zorder=3,
+        )
+    lo, hi = 1.0, 5.0
+    ax.plot([lo, hi], [lo, hi], "k--", linewidth=0.8, label="y = x (no change)")
+    ax.set_xlabel("GT UTMOS")
+    ax.set_ylabel("Adversarial UTMOS")
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_title("GT vs. adversarial naturalness")
+    ax.legend(fontsize=8)
+
+    plt.tight_layout()
+    out = os.path.join(output_dir, "utmos_scores.png")
+    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"[Saved] utmos_scores.png")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -575,12 +820,12 @@ def main():
     parser.add_argument("results_dir",
                         help="Directory containing sentence_XXX/run_N/run_summary.json files")
     parser.add_argument("--output_dir", default=None,
-                        help="Output directory for plots (default: results_dir)")
+                        help="Output directory for plots (default: results_dir/analysis/)")
     parser.add_argument("--example_run", default=None,
                         help="Specific run to use for graph 8, format: sentence_id:run_id (e.g. 51:0)")
     args = parser.parse_args()
 
-    output_dir = args.output_dir or args.results_dir
+    output_dir = args.output_dir or os.path.join(args.results_dir, "analysis")
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"[*] Loading results from: {args.results_dir}")
@@ -607,6 +852,9 @@ def main():
 
     plot_example_run(df, output_dir, args.example_run)
     plot_comparison_table(df, output_dir)
+    plot_semantic_distance_all(df, output_dir)
+    plot_iqr(df, output_dir)
+    plot_utmos(df, output_dir)
 
     csv_path = os.path.join(output_dir, "all_results.csv")
     df.drop(columns=["json_path"]).to_csv(csv_path, index=False)

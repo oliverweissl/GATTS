@@ -30,13 +30,7 @@ from Optimizer.pymoo_optimizer import PymooOptimizer
 from pymoo.algorithms.moo.nsga2 import NSGA2
 
 
-# =============================================================================
-# Harvard Sentence Lists (IEEE, Rothauser et al. 1969)
-# Source: https://www.cs.columbia.edu/~hgs/audio/harvard.html
-# =============================================================================
-HARVARD_SENTENCES = [
-    "A large size in stockings is hard to sell",
-]
+from Datastructures.harvard_sentences import HARVARD_SENTENCES
 
 
 def upload_folder_to_gcs(local_folder: str, bucket_name: str, gcs_prefix: str):
@@ -72,6 +66,7 @@ def initialize_parser():
     parser.add_argument("--save_graphs", action="store_true", default=True)
     parser.add_argument("--gcs_bucket", type=str, default="thesis-data-2026")
     parser.add_argument("--gcs_prefix", type=str, default="outputs")
+    parser.add_argument("--upload_gcs", action="store_true", default=False)
     return parser
 
 
@@ -209,7 +204,8 @@ def main():
                         target_rms=target_rms,
                     )
                     all_summaries.append(summary)
-                    upload_folder_to_gcs(folder_path, args.gcs_bucket, args.gcs_prefix)
+                    if args.upload_gcs:
+                        upload_folder_to_gcs(folder_path, args.gcs_bucket, args.gcs_prefix)
 
                 torch.cuda.empty_cache()
 
@@ -221,7 +217,8 @@ def main():
 
     finally:
         RunLogger.aggregate_results(all_summaries, output_dir=os.path.join("outputs", "results", run_timestamp))
-        upload_folder_to_gcs("outputs", args.gcs_bucket, args.gcs_prefix)
+        if args.upload_gcs:
+            upload_folder_to_gcs("outputs", args.gcs_bucket, args.gcs_prefix)
         print("\n[Done]")
 
 

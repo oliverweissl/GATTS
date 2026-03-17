@@ -33,15 +33,7 @@ from Optimizer.pymoo_optimizer import PymooOptimizer
 from pymoo.algorithms.moo.nsga2 import NSGA2
 
 
-# =============================================================================
-# Harvard Sentence Lists (IEEE, Rothauser et al. 1969)
-# Source: https://www.cs.columbia.edu/~hgs/audio/harvard.html
-# =============================================================================
-HARVARD_SENTENCES = [
-    "The soft cushion broke the man's fall.",
-    "Two blue fish swam in the tank.",
-    "A speedy man can beat this track mark.",
-]
+from Datastructures.harvard_sentences import HARVARD_SENTENCES
 
 
 def upload_folder_to_gcs(local_folder: str, bucket_name: str, gcs_prefix: str):
@@ -59,7 +51,6 @@ def initialize_parser():
     parser = argparse.ArgumentParser(description="Adversarial TTS — Harvard Sentences")
     parser.add_argument("--sentence_start", type=int, default=1, help="Start position (1-indexed) in the sentence list")
     parser.add_argument("--sentence_end", type=int, default=5, help="End position (1-indexed) in the sentence list")
-    parser.add_argument("--random_order", action="store_true", default=False, help="Randomize sentence order with seed=42 (default: sequential)")
     parser.add_argument("--loop_count", type=int, default=2)
     parser.add_argument("--num_generations", type=int, default=100)
     parser.add_argument("--pop_size", type=int, default=200)
@@ -75,6 +66,7 @@ def initialize_parser():
     parser.add_argument("--save_graphs", action="store_true", default=True)
     parser.add_argument("--gcs_bucket", type=str, default="thesis-data-2026")
     parser.add_argument("--gcs_prefix", type=str, default="outputs")
+    parser.add_argument("--upload_gcs", action="store_true", default=False)
     return parser
 
 
@@ -93,17 +85,12 @@ def main():
     tts_model, asr_model = loader.load_required_models()
     print("Models loaded.")
 
-    if args.random_order:
-        sentence_order = [int(i) for i in np.random.default_rng(42).permutation(100) + 1]
-    else:
-        sentence_order = list(range(1, 101))
-    sentence_ids = sentence_order[args.sentence_start - 1 : args.sentence_end]
+    sentence_ids = list(range(args.sentence_start, args.sentence_end + 1))
 
     run_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
     print(f"Run timestamp: {run_timestamp}")
     print(f"{'='*60}")
     print(f"  mode:               {args.mode}")
-    print(f"  random_order:       {args.random_order}")
     print(f"  sentence positions: {args.sentence_start} → {args.sentence_end}  →  IDs: {sentence_ids}")
     print(f"  runs per sentence:  {args.loop_count}")
     print(f"  generations:        {args.num_generations}")
@@ -217,7 +204,8 @@ def main():
                         target_rms=target_rms,
                     )
                     all_summaries.append(summary)
-                    upload_folder_to_gcs(folder_path, args.gcs_bucket, args.gcs_prefix)
+                    if args.upload_gcs:
+                        upload_folder_to_gcs(folder_path, args.gcs_bucket, args.gcs_prefix)
 
                 torch.cuda.empty_cache()
 
@@ -229,7 +217,8 @@ def main():
 
     finally:
         RunLogger.aggregate_results(all_summaries, output_dir=os.path.join("outputs", "results", run_timestamp))
-        upload_folder_to_gcs("outputs", args.gcs_bucket, args.gcs_prefix)
+        if args.upload_gcs:
+            upload_folder_to_gcs("outputs", args.gcs_bucket, args.gcs_prefix)
         print("\n[Done]")
 
 
