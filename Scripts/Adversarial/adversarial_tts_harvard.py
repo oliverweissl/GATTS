@@ -19,8 +19,6 @@ import nltk
 nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 
-from google.cloud import storage
-
 from Datastructures.dataclass import ModelData
 from Trainer.EnvironmentLoader import EnvironmentLoader
 from Trainer.AdversarialTrainer import AdversarialTrainer
@@ -31,18 +29,6 @@ from pymoo.algorithms.moo.nsga2 import NSGA2
 
 
 from Datastructures.harvard_sentences import HARVARD_SENTENCES
-
-
-def upload_folder_to_gcs(local_folder: str, bucket_name: str, gcs_prefix: str):
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    for root, _, files in os.walk(local_folder):
-        for file in files:
-            local_path = os.path.join(root, file)
-            gcs_path = os.path.join(gcs_prefix, os.path.relpath(local_path))
-            bucket.blob(gcs_path).upload_from_filename(local_path)
-    print(f"[GCS] Uploaded {local_folder} → gs://{bucket_name}/{gcs_prefix}/")
-
 
 def initialize_parser():
     parser = argparse.ArgumentParser(description="Adversarial TTS — Harvard Sentences")
@@ -64,9 +50,6 @@ def initialize_parser():
     parser.add_argument("--objectives", type=str, default="PESQ=0.2, SET_OVERLAP=0.5")
     parser.add_argument("--save_spectrograms", action="store_true", default=True)
     parser.add_argument("--save_graphs", action="store_true", default=True)
-    parser.add_argument("--gcs_bucket", type=str, default="thesis-data-2026")
-    parser.add_argument("--gcs_prefix", type=str, default="outputs")
-    parser.add_argument("--upload_gcs", action="store_true", default=False)
     return parser
 
 
@@ -204,8 +187,6 @@ def main():
                         target_rms=target_rms,
                     )
                     all_summaries.append(summary)
-                    if args.upload_gcs:
-                        upload_folder_to_gcs(folder_path, args.gcs_bucket, args.gcs_prefix)
 
                 torch.cuda.empty_cache()
 
@@ -217,8 +198,6 @@ def main():
 
     finally:
         RunLogger.aggregate_results(all_summaries, output_dir=os.path.join("outputs", "results", run_timestamp))
-        if args.upload_gcs:
-            upload_folder_to_gcs("outputs", args.gcs_bucket, args.gcs_prefix)
         print("\n[Done]")
 
 

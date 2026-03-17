@@ -1,13 +1,13 @@
 #!/bin/bash
-# Hyperparameter comparison: pop_size=200, num_generations=50
-# Run from project root: bash Scripts/Adversarial/RunScripts/adversarial_tts_harvard_population200_generations50.sh
+# Hyperparameter comparison: pop_size=100, num_generations=100
+# Run from project root: bash Scripts/Adversarial/RunScripts/adversarial_tts_harvard_population100_generations100.sh
 
 python Scripts/Adversarial/adversarial_tts_harvard.py \
     --harvard_sentences_start 1 \
-    --harvard_sentences_end 50 \
+    --harvard_sentences_end 100 \
     --loop_count 1 \
-    --num_generations 50 \
-    --pop_size 200 \
+    --num_generations 100 \
+    --pop_size 100 \
     --batch_size 100 \
     --iv_scalar 0.5 \
     --size_per_phoneme 1 \

@@ -7,7 +7,7 @@ python Scripts/Adversarial/adversarial_waveform_harvard.py \
     --sentence_end 100 \
     --loop_count 1 \
     --num_generations 100 \
-    --pop_size 200 \
+    --pop_size 100 \
     --batch_size 100 \
     --noise_scale 0.05 \
     --objectives "PESQ=0.2, SET_OVERLAP=0.5" \
