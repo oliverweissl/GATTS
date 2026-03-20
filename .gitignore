@@ -4,6 +4,7 @@ _*/
 outputs/
 .venv/
 checkpoints/*
+!checkpoints/.gitkeep
 
 **/google_token.json
 

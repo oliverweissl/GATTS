@@ -14,7 +14,7 @@ sudo apt-get install espeak-ng
 Download the StyleTTS2 LJSpeech checkpoint from [HuggingFace](https://huggingface.co/yl4579/StyleTTS2-LJSpeech/tree/main/Models/LJSpeech):
 
 ```bash
-wget -O checkpoints/STT2.pth https://huggingface.co/yl4579/StyleTTS2-LJSpeech/blob/main/Models/LJSpeech/epoch_2nd_00100.pth
+wget -O checkpoints/STT2.pth https://huggingface.co/yl4579/StyleTTS2-LJSpeech/resolve/main/Models/LJSpeech/epoch_2nd_00100.pth
 ```
 
 ## Running the Paper Experiments
