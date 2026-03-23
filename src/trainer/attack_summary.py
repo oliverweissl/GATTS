@@ -27,6 +27,7 @@ import json
 import datetime
 
 import torch
+import numpy as np
 import soundfile as sf
 import torchaudio.functional as AF
 import whisper as _whisper_lib
@@ -43,6 +44,10 @@ _STOPWORDS  = set(stopwords.words('english'))
 _LEMMATIZER = WordNetLemmatizer()
 _SBERT_MODEL = 'all-MiniLM-L6-v2'
 
+
+# ---------------------------------------------------------------------------
+# Attack result saving
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Internal helpers (mirrors RunLogger / SetOverlapObjective logic exactly)
@@ -170,7 +175,7 @@ def compute_attack_summary(
     # on the CUDA context / batch size it was first seen in).
     if whisper_transcription is None or gt_transcription is None:
         if asr_model is None:
-            from src.models import Whisper
+            from src.models._whisper import Whisper
             asr_model = Whisper(device=device)
         raw_whisper = asr_model.model
 

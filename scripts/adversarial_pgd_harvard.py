@@ -17,20 +17,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import shutil
 import argparse
-import datetime
 import subprocess
 import soundfile as sf
+import torch
 
 from src.data.harvard_sentences import HARVARD_SENTENCES
-from src.trainer.attack_summary import compute_attack_summary
+from src.models._whisper import Whisper
+from src.trainer.result_writer import save_attack_result
 
 
 NB_ITER = 200
 SEED = 235
 SNR = 35
-MODEL_LABEL = 'base'
 
-AUDIO_DIR = '_HarvardAudios'
+AUDIO_DIR = 'outputs'
 WHISPER_ATTACK_DIR = 'scripts/PGD'
 
 
@@ -42,7 +42,7 @@ def create_csv(sentence_ids, output_dir):
     with open(csv_path, 'w') as f:
         f.write('ID,duration,wav,wrd\n')
         for sid in sentence_ids:
-            audio_path = os.path.join(AUDIO_DIR, f'harvard_audio_{sid}.wav')
+            audio_path = os.path.abspath(os.path.join(AUDIO_DIR, f'harvard_sentence_{sid:03d}', 'harvard_audio.wav'))
             if not os.path.exists(audio_path):
                 print(f"[{sid:3d}] Audio not found, skipping: {audio_path}")
                 continue
@@ -54,71 +54,67 @@ def create_csv(sentence_ids, output_dir):
 
 
 def run_pgd_attack(output_dir, gpu=None):
+    import torch
+    abs_output_dir = os.path.abspath(output_dir)
+    device = f'cuda:{gpu}' if (gpu is not None and torch.cuda.is_available()) else ('cuda:0' if torch.cuda.is_available() else 'cpu')
     cmd = [
-        '/home/weissl/miniconda3/envs/pgd/bin/python', 'run_attack.py',
+        sys.executable, 'run_attack.py',
         'attack_configs/whisper/pgd.yaml',
-        f'--root={output_dir}',
-        f'--data_folder={output_dir}',
+        f'--root={abs_output_dir}',
+        f'--data_folder={abs_output_dir}',
         '--data_csv_name=harvard',
-        f'--model_label={MODEL_LABEL}',
         f'--nb_iter={NB_ITER}',
         '--load_audio=False',
         f'--seed={SEED}',
         '--attack_name=pgd_harvard',
         f'--snr={SNR}',
         '--skip_prep=True',
+        f'--device={device}',
     ]
     env = os.environ.copy()
     if gpu is not None:
         env['CUDA_VISIBLE_DEVICES'] = str(gpu)
 
+    print(f"[PGD] Running attack on device={device} | nb_iter={NB_ITER} | snr={SNR}")
+    result = subprocess.run(cmd, cwd=WHISPER_ATTACK_DIR, env=env)
+    print(f"[PGD] subprocess exited with code {result.returncode}")
 
-    subprocess.run(cmd, cwd=WHISPER_ATTACK_DIR, check=True, capture_output=True,)
 
-
-def organize_outputs(sentence_ids, output_dir, elapsed_time_seconds=None, n_sentences=1):
-    save_path = os.path.join(
-        output_dir, 'attacks', 'pgd_harvard',
-        f'whisper-{MODEL_LABEL}-{SNR}', str(SEED), 'save'
-    )
-    timestamp = os.path.basename(output_dir)
+def organize_outputs(sentence_ids, whisper_model, elapsed_time_seconds=None, n_sentences=1):
+    save_path = os.path.join(AUDIO_DIR, 'pgd_save')
 
     for sid in sentence_ids:
-        adv_src = os.path.join(save_path, f'sentence_{sid:03d}.wav')
-        gt_src = os.path.join(AUDIO_DIR, f'harvard_audio_{sid}.wav')
-
+        adv_src = os.path.join(save_path, f'sentence_{sid:03d}_adv.wav')
         if not os.path.exists(adv_src):
             print(f"[{sid:3d}] Adversarial audio not found, skipping")
             continue
 
-        sentence_dir = os.path.join(output_dir, f'sentence_{sid:03d}')
-        os.makedirs(sentence_dir, exist_ok=True)
-
-        adv_dst = os.path.join(sentence_dir, 'best_pgd.wav')
-        gt_dst  = os.path.join(sentence_dir, 'ground_truth.wav')
+        sentence_dir = os.path.join(AUDIO_DIR, f'harvard_sentence_{sid:03d}')
+        adv_dst = os.path.join(sentence_dir, 'pgd.wav')
         shutil.copy(adv_src, adv_dst)
-        shutil.copy(gt_src,  gt_dst)
 
-        sentence_elapsed = elapsed_time_seconds / n_sentences if elapsed_time_seconds else None
-        compute_attack_summary(
-            adversarial_audio_path=adv_dst,
-            gt_audio_path=gt_dst,
-            gt_text=HARVARD_SENTENCES[sid - 1],
-            attack_method='PGD',
-            num_generations=NB_ITER,
-            pop_size=1,  # PGD is gradient-based, no population
-            elapsed_time_seconds=sentence_elapsed or 0.0,
-            output_path=os.path.join(sentence_dir, 'pgd_summary.json'),
+        audio, sr = sf.read(adv_dst)
+        texts, _ = whisper_model.inference(torch.from_numpy(audio).float())
+        transcription = texts[0]
+
+        sentence_elapsed = elapsed_time_seconds / n_sentences if elapsed_time_seconds else 0.0
+        save_attack_result(
             sentence_id=sid,
-            extra={
-                'model': f'whisper-{MODEL_LABEL}',
+            method='pgd',
+            audio=audio,
+            transcription=transcription,
+            gt_text=HARVARD_SENTENCES[sid - 1],
+            elapsed=sentence_elapsed,
+            params={
+                'num_generations': NB_ITER,
+                'pop_size': 1,
                 'snr': SNR,
                 'seed': SEED,
-                'timestamp': timestamp,
             },
         )
 
-        print(f"[{sid:3d}] Saved to {sentence_dir}")
+    shutil.rmtree(save_path, ignore_errors=True)
+    shutil.rmtree(os.path.join(AUDIO_DIR, 'csv'), ignore_errors=True)
 
 
 def main():
@@ -134,11 +130,12 @@ def main():
     sentence_ids = list(range(args.start, args.end + 1))
 
     print(f"Sentences: {args.start} → {args.end}")
-    print(f"Model: whisper-{MODEL_LABEL} | SNR: {SNR} | Iterations: {NB_ITER} | Seed: {SEED}")
+    print(f"SNR: {SNR} | Iterations: {NB_ITER} | Seed: {SEED}")
     print('=' * 60)
 
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-    output_dir = os.path.join('outputs', 'results', 'PGD', timestamp)
+    whisper_model = Whisper()
+
+    output_dir = 'outputs'
     os.makedirs(output_dir, exist_ok=True)
 
     csv_path = create_csv(sentence_ids, output_dir)
@@ -149,7 +146,7 @@ def main():
     run_pgd_attack(output_dir)
     elapsed = time.time() - t0
 
-    organize_outputs(sentence_ids, output_dir, elapsed_time_seconds=elapsed, n_sentences=len(sentence_ids))
+    organize_outputs(sentence_ids, whisper_model, elapsed_time_seconds=elapsed, n_sentences=len(sentence_ids))
     print('\n[Done]')
 
 

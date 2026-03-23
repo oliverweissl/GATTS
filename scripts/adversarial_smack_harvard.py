@@ -20,15 +20,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "SMA
 
 import time
 import argparse
-import datetime
+import torch
 import soundfile as sf
+import librosa
 
 
 from src.data.harvard_sentences import HARVARD_SENTENCES
+from src.models._whisper import Whisper
+from src.trainer.result_writer import save_attack_result
 from scripts.SMACK.genetic import GeneticAlgorithm
 from scripts.SMACK.gradient import GradientEstimation
 from scripts.SMACK.synthesis import audio_synthesis
-from src.trainer.attack_summary import compute_attack_summary
 
 
 POPULATION_SIZE = 163
@@ -36,13 +38,11 @@ GENETIC_ITERATIONS = 82
 GRADIENT_ITERATIONS = 41
 TARGET_MODEL = 'whisperASR'
 
-AUDIO_DIR = '_HarvardAudios'
+AUDIO_DIR = 'outputs'
 
 
-def run_attack(reference_audio: str, reference_text: str, output_dir: str):
+def run_attack(reference_audio: str, reference_text: str):
     """Run genetic + gradient attack for one sentence."""
-    os.makedirs(output_dir, exist_ok=True)
-
     start_time = time.time()
 
     ga = GeneticAlgorithm(reference_audio, reference_text, TARGET_MODEL, POPULATION_SIZE)
@@ -83,15 +83,16 @@ def main():
     print(f"Audio directory: {AUDIO_DIR}")
     print('=' * 60)
 
-    run_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    output_base = os.path.join('outputs', 'results', 'SMACK', run_timestamp)
+    whisper_model = Whisper()
 
     if not os.path.exists("scripts/SMACK/SampleDir"):
         os.mkdir("scripts/SMACK/SampleDir")
 
     for sentence_id in range(args.start, args.end + 1):
         sentence_text = HARVARD_SENTENCES[sentence_id - 1]
-        reference_audio = os.path.join(AUDIO_DIR, f'harvard_audio_{sentence_id}.wav')
+
+        sentence_dir = os.path.join(AUDIO_DIR, f'harvard_sentence_{sentence_id:03d}')
+        reference_audio = os.path.join(sentence_dir, 'harvard_audio.wav')
 
         if not os.path.exists(reference_audio):
             print(f"[{sentence_id:3d}] Reference audio not found, skipping: {reference_audio}")
@@ -101,33 +102,30 @@ def main():
         print(f"[Sentence {sentence_id}] {sentence_text}")
         print('=' * 60)
 
-        sentence_dir = os.path.join(output_base, f'sentence_{sentence_id:03d}')
-        os.makedirs(sentence_dir, exist_ok=True)
-
-        p_refined, elapsed = run_attack(reference_audio, sentence_text, sentence_dir)
+        p_refined, elapsed = run_attack(reference_audio, sentence_text)
 
         # Synthesize adversarial audio from the refined prosody vector
         # ETTS (WaveGlow) outputs at 22050 Hz — resample to 16 kHz for consistency
-        import librosa
         audio_numpy = audio_synthesis(p_refined.reshape(-1, 32), reference_audio, sentence_text)
         audio_16k = librosa.resample(audio_numpy.astype('float32'), orig_sr=22050, target_sr=16000)
-        adv_path = os.path.join(sentence_dir, 'best_smack.wav')
-        gt_dst    = os.path.join(sentence_dir, 'ground_truth.wav')
-        sf.write(adv_path, audio_16k, 16000)
 
-        import shutil
-        shutil.copy(reference_audio, gt_dst)
+        texts, _ = whisper_model.inference(torch.from_numpy(audio_16k).float())
+        transcription = texts[0]
 
-        compute_attack_summary(
-            adversarial_audio_path=adv_path,
-            gt_audio_path=gt_dst,
-            gt_text=sentence_text,
-            attack_method='SMACK',
-            num_generations=GENETIC_ITERATIONS + GRADIENT_ITERATIONS,
-            pop_size=POPULATION_SIZE,
-            elapsed_time_seconds=elapsed,
-            output_path=os.path.join(sentence_dir, 'smack_summary.json'),
+        save_attack_result(
             sentence_id=sentence_id,
+            method='smack',
+            audio=audio_16k,
+            transcription=transcription,
+            gt_text=sentence_text,
+            elapsed=elapsed,
+            params={
+                'num_generations': GENETIC_ITERATIONS + GRADIENT_ITERATIONS,
+                'pop_size': POPULATION_SIZE,
+                'target_model': TARGET_MODEL,
+                'genetic_iterations': GENETIC_ITERATIONS,
+                'gradient_iterations': GRADIENT_ITERATIONS,
+            },
         )
 
     print("\n[Done]")

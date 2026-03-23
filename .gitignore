@@ -6,8 +6,6 @@ outputs/
 checkpoints/*
 !checkpoints/.gitkeep
 
-**/google_token.json
-
 *.pth
 *.wav
 

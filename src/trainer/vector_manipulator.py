@@ -58,21 +58,6 @@ def add_numbers_pattern(a: Tensor, b: Tensor, pattern: list[int]) -> tuple[Tenso
     return a, b
 
 
-def _adjust_interpolation_vector(interpolation_vector: Tensor, matrix: Tensor, subspace_optimization: bool) -> Tensor:
-    """Adjusts interpolation vector dimensions for TTS inference."""
-    if interpolation_vector.shape[-1] != 1:
-        if subspace_optimization:
-            interpolation_vector = interpolation_vector @ matrix
-        else:
-            interpolation_vector = _extend_to_size(interpolation_vector, 512)
-
-    interpolation_vector = interpolation_vector.transpose(-1, -2)
-
-    if interpolation_vector.dim() < 3:
-        interpolation_vector = interpolation_vector.unsqueeze(0)
-
-    return interpolation_vector
-
 
 def generate_similar_noise(reference_tensor):
     """
@@ -95,29 +80,23 @@ def generate_similar_noise(reference_tensor):
     return torch.randn_like(reference_tensor) * std + mu
 
 class VectorManipulator:
-    """
-    Handles vector manipulation operations for adversarial TTS.
-    Stores audio_data and config_data to avoid repeated parsing.
 
-    Also provides standalone utility functions:
-        - add_numbers_pattern: Pads tensors to equal length using a pattern
-    """
-
-    def __init__(self, audio_embedding_gt: AudioEmbeddingData, h_text_target: Tensor, config_data: ConfigData):
+    def __init__(self, audio_embedding_gt: AudioEmbeddingData, h_text_target: Tensor, mode: AttackMode):
         self.audio_embedding_gt = audio_embedding_gt
         self.h_text_target = h_text_target
-        self.config_data = config_data
+        self.mode = mode
 
     def interpolate(self, interpolation_vectors_batch: Tensor):
         # 1. Get batch slice
         current_batch_size = interpolation_vectors_batch.shape[0]
 
         # 2. Adjust interpolation vectors
-        interpolation_vectors = _adjust_interpolation_vector(
-            interpolation_vectors_batch,
-            self.config_data.random_matrix,
-            self.config_data.subspace_optimization
-        )
+        interpolation_vectors = interpolation_vectors_batch
+        if interpolation_vectors.shape[-1] != 1:
+            interpolation_vectors = _extend_to_size(interpolation_vectors, 512)
+        interpolation_vectors = interpolation_vectors.transpose(-1, -2)
+        if interpolation_vectors.dim() < 3:
+            interpolation_vectors = interpolation_vectors.unsqueeze(0)
 
         # 3. Expand shared data for batch
         input_length = self.audio_embedding_gt.input_length.expand(current_batch_size)
@@ -127,10 +106,10 @@ class VectorManipulator:
         style_vector_prosodic = self.audio_embedding_gt.style_vector_prosodic.expand(current_batch_size, -1)
 
         # 4. Interpolate h_text based on attack mode
-        if self.config_data.mode is AttackMode.NOISE_UNTARGETED or self.config_data.mode is AttackMode.TARGETED:
+        if self.mode is AttackMode.NOISE_UNTARGETED or self.mode is AttackMode.TARGETED:
             h_text_mixed = (1.0 - interpolation_vectors) * self.audio_embedding_gt.h_text + interpolation_vectors * self.h_text_target
         else:
-            h_text_mixed = self.audio_embedding_gt.h_text + self.config_data.iv_scalar * interpolation_vectors
+            h_text_mixed = self.audio_embedding_gt.h_text + interpolation_vectors
 
         return (
             current_batch_size,
