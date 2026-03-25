@@ -104,18 +104,27 @@ class ETTSInferenceModel:
 
 
     def synthesize_with_sample_lemo(self, g_emo_audio, l_emo, text, outputname):
-        _phonemes = self.g2p(text)
-        phonemes = [self.labelset['<s>']]
-        for i, phoneme in enumerate(_phonemes):
-            if phoneme in self.labelset:
-                phonemes.append(self.labelset[phoneme])
-            else:
-                phonemes.append(self.labelset['<unk>'])
-        phonemes.append(self.labelset['</s>'])
-        phonemes = torch.cuda.LongTensor([phonemes])
+        # Cache phoneme encoding — constant for same text across all individuals in a generation
+        if not hasattr(self, '_cached_phonemes_text') or self._cached_phonemes_text != text:
+            _phonemes = self.g2p(text)
+            phonemes = [self.labelset['<s>']]
+            for phoneme in _phonemes:
+                if phoneme in self.labelset:
+                    phonemes.append(self.labelset[phoneme])
+                else:
+                    phonemes.append(self.labelset['<unk>'])
+            phonemes.append(self.labelset['</s>'])
+            self._cached_phonemes = torch.cuda.LongTensor([phonemes])
+            self._cached_phonemes_text = text
+        phonemes = self._cached_phonemes
 
-        g_emo = torch.cuda.FloatTensor(g_emo_audio).unsqueeze(0)
-        g_emo = self.emo_model(g_emo)
+        # Cache g_emo — constant for same reference audio across all individuals in a generation
+        if not hasattr(self, '_cached_g_emo_id') or self._cached_g_emo_id != id(g_emo_audio):
+            g_emo = torch.cuda.FloatTensor(g_emo_audio).unsqueeze(0)
+            self._cached_g_emo = self.emo_model(g_emo).detach()
+            self._cached_g_emo_id = id(g_emo_audio)
+        g_emo = self._cached_g_emo
+
         mel, attns = self.model.inference(g_emo, l_emo, phonemes, maxlen=self.maxlength, threshold=.5, ref_wav=False)
 
         audio = self.vocoder.infer(mel.transpose(1, 2), sigma=0.6) * 32768.0
@@ -125,5 +134,4 @@ class ETTSInferenceModel:
 
         audio_numpy = audio.squeeze(0).cpu().detach().numpy().astype('int16')
         sf.write(os.path.join(self.sampledir, outputname), audio_numpy, 22050)
-
         return audio

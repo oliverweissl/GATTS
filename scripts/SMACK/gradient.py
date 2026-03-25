@@ -1,8 +1,7 @@
 import os
 import numpy as np
-import soundfile as sf
 
-from utils import levenshteinDistance, unique_wav_path
+from utils import levenshteinDistance
 from CMUPhoneme.string_similarity import CMU_similarity
 from ALINEPhoneme.string_dissimilarity import ALINE_dissimilarity
 from NISQA.predict import NISQA_score
@@ -25,14 +24,11 @@ class GradientEstimation:
         self.sigma = sigma
         self.learning_rate = learning_rate
         self.K = K
-    def _calculate_loss(self, p_i):
+    def _calculate_loss(self):
         """ Calculates the loss of a given noise vector """
 
-        l_emo_numpy = p_i.reshape(-1, 32)
         transcription = ""
-
-        audio_numpy = audio_synthesis(l_emo_numpy, self.reference_audio, self.reference_text)
-        tmp_audio_file = './SampleDir/synthesis.wav'
+        tmp_audio_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'SampleDir', 'synthesis.wav')
         
         audio_quality = NISQA_score(tmp_audio_file)
 
@@ -44,10 +40,6 @@ class GradientEstimation:
 
         if self.target_model == 'whisperASR':
             transcription = whisper_ASR(tmp_audio_file)
-
-        transcriped_file_name = self.target_model + '_' + transcription + '.wav'
-        transcriped_file_path = unique_wav_path(os.path.join('./SampleDir', transcriped_file_name))
-        sf.write(transcriped_file_path, audio_numpy, 22050)
 
         if transcription == 'NA':
             loss_levenshtein = 100
@@ -74,11 +66,9 @@ class GradientEstimation:
         """
         gradient = 0
         for k in range(self.K):
-            # Create Gaussian noise, and update the prosody vector
             u_k = np.random.normal(0, 1, size=p_i.shape)
-            loss = self._calculate_loss(p_i + self.sigma * u_k)
+            loss = self._calculate_loss()
             gradient += loss * u_k
-        
         gradient = gradient / (self.sigma * self.K)
         
         return gradient

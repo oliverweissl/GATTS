@@ -30,12 +30,16 @@ def NISQA_score(audio_file, pretrained_model='nisqa_tts.tar', ms_channel=None, t
         _nisqa_instance.args['deg'] = audio_file
         _nisqa_instance._loadDatasets()
 
-    nisqa_res = _nisqa_instance.predict()
+    try:
+        nisqa_res = _nisqa_instance.predict()
+        mos = nisqa_res.iloc[0]['mos_pred']
+    except RuntimeError:
+        mos = 1.0  # worst MOS — penalises zero-length synthesis outputs
 
     # divert stream back
     sys.stdout = sys.__stdout__
 
-    return nisqa_res.iloc[0]['mos_pred']
+    return mos
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

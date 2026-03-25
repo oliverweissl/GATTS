@@ -22,7 +22,10 @@ _g2p = G2p()
 
 # Function to convert string to phoneme sequence using g2p_en
 def string_to_phonemes(input_string):
-    return _g2p(input_string)
+    try:
+        return _g2p(input_string)
+    except Exception:
+        return []
 
 
 # Function to calculate phoneme similarity

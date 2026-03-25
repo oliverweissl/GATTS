@@ -37,7 +37,7 @@ output_folder: !ref <root>/attacks/<attack_name>/<source_model_name>-<snr>/<seed
 wer_file: !ref <output_folder>/wer.txt
 save_folder: !ref <output_folder>
 log: !ref <output_folder>/log.txt
-save_audio_path: !ref <output_folder>/save
+save_audio_path: !ref <root>/pgd_save
 
 dataset_prepare_fct: !name:robust_speech.data.librispeech.prepare_librispeech
 dataio_prepare_fct: !name:robust_speech.data.dataio.dataio_prepare

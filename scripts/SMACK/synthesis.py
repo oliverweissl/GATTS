@@ -45,7 +45,6 @@ def audio_synthesis(l_emo_numpy, reference_audio, reference_text):
 
     with torch.no_grad():
         audio_tensor_syn = model_syn.synthesize_with_sample_lemo(global_audio, l_emo, reference_text, f'synthesis.wav')
-        
         audio_numpy = audio_tensor_syn.squeeze(0).cpu().detach().numpy().astype('int16')
         
     return audio_numpy

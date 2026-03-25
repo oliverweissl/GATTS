@@ -44,9 +44,9 @@ if sr != 16000:
     sf.write(reference_audio_16k, audio, 16000)
     reference_audio = reference_audio_16k
 
-population_size = 1
-genetic_iterations = 1
-gradient_iterations = 1
+population_size = 80
+genetic_iterations = 100
+gradient_iterations = 100
 
 # Record the start time
 start_time = time.time()

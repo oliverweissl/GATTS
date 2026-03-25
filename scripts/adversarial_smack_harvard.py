@@ -31,12 +31,12 @@ from scripts.SMACK.synthesis import audio_synthesis
 from src.trainer.attack_summary import compute_attack_summary
 
 
-POPULATION_SIZE = 163
-GENETIC_ITERATIONS = 82
-GRADIENT_ITERATIONS = 41
+POPULATION_SIZE = 20
+GENETIC_ITERATIONS = 10
+GRADIENT_ITERATIONS = 5
 TARGET_MODEL = 'whisperASR'
 
-AUDIO_DIR = '_HarvardAudios'
+AUDIO_DIR = 'outputs/'
 
 
 def run_attack(reference_audio: str, reference_text: str, output_dir: str):
@@ -44,7 +44,6 @@ def run_attack(reference_audio: str, reference_text: str, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
 
     start_time = time.time()
-
     ga = GeneticAlgorithm(reference_audio, reference_text, TARGET_MODEL, POPULATION_SIZE)
     fittest_individual = ga.run(GENETIC_ITERATIONS)
 
@@ -91,7 +90,7 @@ def main():
 
     for sentence_id in range(args.start, args.end + 1):
         sentence_text = HARVARD_SENTENCES[sentence_id - 1]
-        reference_audio = os.path.join(AUDIO_DIR, f'harvard_audio_{sentence_id}.wav')
+        reference_audio = os.path.join(AUDIO_DIR,f'harvard_sentence_{sentence_id:03d}', 'harvard_audio.wav')
 
         if not os.path.exists(reference_audio):
             print(f"[{sentence_id:3d}] Reference audio not found, skipping: {reference_audio}")

@@ -1,19 +1,18 @@
 import os
 import random
 import uuid
-import copy
 import numpy as np
-import soundfile as sf
-import hashlib
-
+import re
 from utils import levenshteinDistance, unique_wav_path
 from CMUPhoneme.string_similarity import CMU_similarity
 from ALINEPhoneme.string_dissimilarity import ALINE_dissimilarity
 from NISQA.predict import NISQA_score
+from tqdm import tqdm
 from synthesis import audio_synthesis
 from google_ASR import google_ASR
 from iflytek_ASR import iflytek_ASR
 from whisper_ASR import whisper_ASR
+import soundfile as sf
 
 
 class GeneticAlgorithm():
@@ -50,7 +49,7 @@ class GeneticAlgorithm():
 
             audio_numpy = audio_synthesis(l_emo_numpy, self.reference_audio, self.reference_text)
             tmp_audio_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'SampleDir', 'synthesis.wav')
-            
+
             audio_quality = NISQA_score(tmp_audio_file)
 
             if self.target_model == 'googleASR':
@@ -60,11 +59,9 @@ class GeneticAlgorithm():
                 transcription = iflytek_ASR(tmp_audio_file)
 
             if self.target_model == 'whisperASR':
-                transcription = whisper_ASR(tmp_audio_file)
+                transcription = whisper_ASR(audio_numpy)
 
-            h = hashlib.md5(transcription.encode()).hexdigest()[:8]
-
-            transcriped_file_name = self.target_model + '_' + transcription[:10] + "_" + h + '.wav'
+            transcriped_file_name = self.target_model + '_' + re.sub(r'[^A-Za-z0-9]+', '', transcription[:50]) + '.wav'
             transcriped_file_path = unique_wav_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'SampleDir', transcriped_file_name))
             sf.write(transcriped_file_path, audio_numpy, 22050)
 
@@ -74,32 +71,32 @@ class GeneticAlgorithm():
                 fitness_ALINE = 10000
             else:
                 # Maximize distance from reference_text (untargeted)
-                fitness_levenshtein = levenshteinDistance(transcription, self.reference_text) / ((len(transcription) + len(self.reference_text)) / 2)
+                fitness_levenshtein = levenshteinDistance(transcription, self.reference_text) / (
+                            (len(transcription) + len(self.reference_text)) / 2)
                 fitness_CMU = CMU_similarity(transcription, self.reference_text)
                 fitness_ALINE = ALINE_dissimilarity(transcription, self.reference_text)
 
             # Untargeted fitness: flip all directions to maximize distance from reference_text
             # fitness_levenshtein: [0, 1]; fitness_CMU: [0, 1]; fitness_ALINE: [0, 1000]; audio_quality: [0, 5]
-            fitness = -10*fitness_levenshtein + 0.1*fitness_CMU - 0.0001*fitness_ALINE - 0.05*audio_quality
+            fitness = -10 * fitness_levenshtein + 0.1 * fitness_CMU - 0.0001 * fitness_ALINE - 0.05 * audio_quality
 
-            print(f"[Individual {individual_id} Fitness: {fitness:.2f}]")
-            print(f"[Individual {individual_id} Levenshtein: {-10*fitness_levenshtein:.2f}]")
-            print(f"[Individual {individual_id} CMU: {0.1*fitness_CMU:.2f}]")
-            print(f"[Individual {individual_id} ALINE: {-0.0001*fitness_ALINE:.2f}]")
-            print(f"[Individual {individual_id} NISQA: {0.05*audio_quality:.2f}]")
-            print('\n')
-            
+            #print(f"[Individual {individual_id} Fitness: {fitness:.2f}]")
+            #print(f"[Individual {individual_id} Levenshtein: {-10 * fitness_levenshtein:.2f}]")
+            #print(f"[Individual {individual_id} CMU: {0.1 * fitness_CMU:.2f}]")
+            #print(f"[Individual {individual_id} ALINE: {-0.0001 * fitness_ALINE:.2f}]")
+            #print(f"[Individual {individual_id} NISQA: {0.05 * audio_quality:.2f}]")
+            #print('\n')
+
             population_fitness.append(fitness)
-            
+
         return population_fitness
 
     def _mutate(self, individual, individual_id, mutation_rate=0.5, mutation_factor=0.8):
         """ Randomly change the individual's values with probability
         mutation_rate """
-        individual = copy.deepcopy(individual)
-        for j in range(individual.shape[0]):
-            if np.random.random() < mutation_rate:
-                individual[j] = individual[j] * (1 + np.random.randn() * mutation_factor)
+        individual = individual.copy()
+        mask = np.random.random(individual.shape) < mutation_rate
+        individual[mask] *= 1 + np.random.randn(mask.sum()) * mutation_factor
 
         return individual, individual_id
 
@@ -148,21 +145,16 @@ class GeneticAlgorithm():
             # Insert
             if np.random.random() < 0.5:
                 # Insert genes at random positions
-                for _ in range(edit_length):
-                    pos = np.random.randint(0, len(individual) + 1)
-                    # Estimate mean and variance of the original distribution
-                    mu = np.mean(individual)
-                    sigma = np.std(individual)
-                    # Draw new gene value from the original distribution
-                    insert_value = np.random.normal(mu, sigma)
-                    individual = np.insert(individual, pos, insert_value)
+                mu, sigma = np.mean(individual), np.std(individual)
+                positions = np.sort(np.random.randint(0, len(individual) + 1, size=edit_length))
+                values = np.random.normal(mu, sigma, size=edit_length)
+                individual = np.insert(individual, positions, values)
             # Delete
             else:
                 # Delete genes at random positions
-                for _ in range(edit_length):
-                    if len(individual) > 1:
-                        pos = np.random.randint(0, len(individual))
-                        individual = np.delete(individual, pos)
+                n_delete = min(edit_length, len(individual) - 1)
+                positions = np.random.choice(len(individual), size=n_delete, replace=False)
+                individual = np.delete(individual, positions)
 
         # Return the modified individual
         return individual, individual_id
@@ -176,8 +168,7 @@ class GeneticAlgorithm():
         epoch=0
         fittest_individual = None
         
-        for epoch in range(iterations):
-            # Step 1: Calculate fitnesses
+        for epoch in tqdm(range(iterations)):
             population_fitness = self._calculate_fitness()
             
             current_fitness_dict = {}
@@ -200,7 +191,7 @@ class GeneticAlgorithm():
                 # Mutation Operation
                 mutated_elite, mutated_elite_id = self._mutate(elite_individual, elite_individual_id)
                 new_population.append((mutated_elite, mutated_elite_id))
-            
+
             for i in np.arange(0, self.population_size - num_elites, 2):
                 # Select two parents randomly according to probabilities
                 parents = random.choices(self.population, k=2, weights=parent_probabilities, cum_weights=None)
@@ -212,7 +203,7 @@ class GeneticAlgorithm():
             
             # Assign the new population to self.population
             self.population = new_population
-            
+
             # Step 4: Print log
             fittest_individual = self.population[np.argmax(population_fitness)][0]
             highest_fitness = max(population_fitness)

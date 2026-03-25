@@ -1,31 +1,22 @@
 import sys
-import torch
-import librosa
-
-
-from src.models import load_whisper_model
+from typing import Any
+import numpy as np
+import whisper
 
 _whisper_model = None
 
-def whisper_ASR(audio_file):
-    global _whisper_model
+def _load_model():
+    global _whisper_model, _whisper_pipeline
     if _whisper_model is None:
-        _whisper_model = load_whisper_model("base", device="cuda")
-    model = _whisper_model
+        _whisper_model = whisper.load_model("tiny", device="cuda")
 
-    # Load audio at native sample rate
-    audio, sr = librosa.load(audio_file, sr=None)
-    audio_tensor = torch.from_numpy(audio).float()
 
-    # Call inference method (handles resampling internally)
-    clean_texts, _ = model.inference(audio_tensor)
-
-    text = clean_texts[0].upper() if clean_texts else ""
-
-    # Normalize: keep only alphanumeric and spaces
-    text = "".join(c for c in text if c.isalnum() or c.isspace())
-
-    return text if text else "NA"
+def whisper_ASR(audio_file: Any) -> str:
+    _load_model()
+    if isinstance(audio_file, np.ndarray) and audio_file.dtype == np.int16:
+        audio_file = audio_file.astype(np.float32)
+    result = whisper.transcribe(_whisper_model, audio_file, temperature=0.0)
+    return result["text"] or "NA"
 
 
 # For testing purposes

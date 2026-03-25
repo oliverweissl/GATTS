@@ -83,9 +83,9 @@ def _transcribe_16k(raw_whisper_model, audio_16k: torch.Tensor, device: str) -> 
     import string
     arr = _whisper_lib.pad_or_trim(audio_16k.squeeze().numpy())
     mel = _whisper_lib.log_mel_spectrogram(
-        torch.from_numpy(arr).to(device),
+        torch.from_numpy(arr),  # keep on CPU for stft — avoids cuFFT errors
         n_mels=raw_whisper_model.dims.n_mels,
-    ).unsqueeze(0)
+    ).unsqueeze(0).to(device)
     opts = _whisper_lib.DecodingOptions(without_timestamps=True, temperature=0)
     results = _whisper_lib.decode(raw_whisper_model, mel, opts)
     if not isinstance(results, list):
@@ -190,13 +190,20 @@ def compute_attack_summary(
 
     # --- UTMOS (torchaudio SQUIM_SUBJECTIVE, predicts MOS [1, 5]) ---
     if squim_model is None:
-        from torchaudio.pipelines import SQUIM_SUBJECTIVE
-        squim_model = SQUIM_SUBJECTIVE.get_model().to(device)
-        squim_model.eval()
+        try:
+            from torchaudio.pipelines import SQUIM_SUBJECTIVE
+            squim_model = SQUIM_SUBJECTIVE.get_model().to(device)
+            squim_model.eval()
+        except ImportError:
+            squim_model = None
 
-    with torch.no_grad():
-        utmos_adv = round(float(squim_model(adv_16k.to(device), gt_16k.to(device))[0].item()), 4)
-        utmos_gt  = round(float(squim_model(gt_16k.to(device),  gt_16k.to(device))[0].item()), 4)
+    if squim_model is not None:
+        with torch.no_grad():
+            utmos_adv = round(float(squim_model(adv_16k.to(device), gt_16k.to(device))[0].item()), 4)
+            utmos_gt  = round(float(squim_model(gt_16k.to(device),  gt_16k.to(device))[0].item()), 4)
+    else:
+        utmos_adv = None
+        utmos_gt  = None
 
     # --- SetOverlap (mirrors SetOverlapObjective exactly) ---
     set_overlap = _compute_set_overlap(gt_text, whisper_transcription)
