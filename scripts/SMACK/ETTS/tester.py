@@ -119,7 +119,7 @@ class ETTSInferenceModel:
         mel, attns = self.model.inference(g_emo, l_emo, phonemes, maxlen=self.maxlength, threshold=.5, ref_wav=False)
 
         audio = self.vocoder.infer(mel.transpose(1, 2), sigma=0.6) * 32768.0
-        
+
         audio = audio.squeeze(0)#.cpu()
         audio = audio.type(torch.float32)# / 32768.0
 

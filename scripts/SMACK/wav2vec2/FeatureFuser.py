@@ -23,7 +23,8 @@ def prepare_mask(length, shape, dtype, device):
 class Wav2vec2Wrapper(nn.Module):
     def __init__(self, pretrain=True):
         super().__init__()
-        self.wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained("./checkpoints/facebook_wav2vec2_base").wav2vec2
+        self.wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained("facebook/wav2vec2-base", revision='2dcc7b7f9b11f0ef271067e62599a27317a03114').wav2vec2
+        #Disable gradient checkpointing for ddp
         self.wav2vec2.encoder.config.gradient_checkpointing = False
         self.pretrain = pretrain
         if pretrain:

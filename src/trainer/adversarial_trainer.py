@@ -149,19 +149,8 @@ class AdversarialTrainer:
     # Helper Methods
     # =========================================================================
 
-    def _process_batch(self, batch_idx: int, batch_size: int, interpolation_vectors_full: torch.Tensor) -> tuple[bool, list[list[float]], float, list]:
-        """
-        Returns:
-            stop_optimization (bool): True if early stopping met.
-            batch_scores_list (list[list[float]]): Scores for this batch, grouped by objective.
+    def _process_batch(self, batch_idx: int, batch_size: int, interpolation_vectors_full: torch.Tensor):
 
-        Args:
-            batch_idx: Starting index of this batch
-            interpolation_vectors_full: Full population tensor
-
-        Returns:
-            True if early stopping criteria met, False otherwise
-        """
         start_time = time.time()
 
         # 1. TTS Inference

@@ -3,7 +3,7 @@ import torch
 import librosa
 
 
-from src.models import load_whisper_model
+from src.models._whisper import load_whisper_model
 
 _whisper_model = None
 

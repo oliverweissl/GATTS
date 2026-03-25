@@ -14,7 +14,8 @@ import torch
 import numpy as np
 
 # Local imports
-from ..models import StyleTTS2, Whisper
+from ..models._styletts2 import StyleTTS2
+from ..models._whisper import Whisper
 from .vector_manipulator import add_numbers_pattern, generate_similar_noise
 
 # Import dataclasses and enums
@@ -101,6 +102,40 @@ class EnvironmentLoader:
     # Helper Methods
     # =========================================================================
 
+    def parse_objectives(self, objectives_str: str):
+        """Parse objectives string (e.g. 'PESQ=0.2, SET_OVERLAP=0.5') into active_objectives and thresholds."""
+        active_objectives_raw = set()
+        thresholds = {}
+
+        for entry in objectives_str.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if "=" in entry:
+                obj_name, val_str = entry.split("=")
+                obj_name = obj_name.strip().upper()
+                try:
+                    obj_enum = FitnessObjective[obj_name]
+                    active_objectives_raw.add(obj_enum)
+                    thresholds[obj_enum] = float(val_str.strip())
+                except KeyError:
+                    raise ValueError(f"'{obj_name}' invalid objective.")
+                except ValueError:
+                    raise ValueError(f"Invalid threshold value '{val_str}' for {obj_name}")
+            else:
+                obj_name = entry.strip().upper()
+                try:
+                    obj_enum = FitnessObjective[obj_name]
+                    active_objectives_raw.add(obj_enum)
+                except KeyError:
+                    raise ValueError(f"'{obj_name}' invalid objective.")
+
+        if not active_objectives_raw:
+            raise ValueError("Error: No valid objectives specified.")
+
+        active_objectives = [obj for obj in FitnessObjective if obj in active_objectives_raw]
+        return active_objectives, thresholds
+
     def load_configuration(self, args) -> ConfigData:
         """Parse command-line arguments and create validated ConfigData."""
 
@@ -166,8 +201,53 @@ class EnvironmentLoader:
             thresholds=thresholds,
             subspace_optimization=args.subspace_optimization,
             random_matrix=random_matrix,
-            num_rms_candidates=getattr(args, 'num_rms_candidates', 20),
         )
+
+    def generate_target_embedding(self, mode: AttackMode, text_target: str, audio_embedding_gt, tts: StyleTTS2):
+        """Generate target audio and embeddings given pre-loaded GT embeddings."""
+
+        if mode is AttackMode.TARGETED:
+            tokens_gt = audio_embedding_gt.tokens
+            tokens_target = tts.preprocess_text(text_target)
+            gt_len = tokens_gt.shape[-1]
+            if tokens_target.shape[-1] < gt_len:
+                _, tokens_target = add_numbers_pattern(tokens_gt, tokens_target, [16, 4])
+            else:
+                tokens_target = tokens_target[..., :gt_len]
+            noise = torch.randn(1, 1, 256).to(self.device)
+            audio_embedding_target = tts.extract_embeddings(tokens_target, noise)
+
+        elif mode is AttackMode.ZERO_UNTARGETED:
+            audio_embedding_target = AudioEmbeddingData(
+                audio_embedding_gt.input_length,
+                audio_embedding_gt.text_mask,
+                torch.zeros_like(audio_embedding_gt.h_bert),
+                torch.zeros_like(audio_embedding_gt.h_text),
+                torch.zeros_like(audio_embedding_gt.style_vector_acoustic),
+                torch.zeros_like(audio_embedding_gt.style_vector_prosodic),
+            )
+
+        elif mode is AttackMode.NEGATION_UNTARGETED:
+            audio_embedding_target = AudioEmbeddingData(
+                audio_embedding_gt.input_length,
+                audio_embedding_gt.text_mask,
+                -audio_embedding_gt.h_bert,
+                -audio_embedding_gt.h_text,
+                -audio_embedding_gt.style_vector_acoustic,
+                -audio_embedding_gt.style_vector_prosodic,
+            )
+
+        else:  # NOISE_UNTARGETED
+            audio_embedding_target = AudioEmbeddingData(
+                audio_embedding_gt.input_length,
+                audio_embedding_gt.text_mask,
+                generate_similar_noise(audio_embedding_gt.h_bert),
+                generate_similar_noise(audio_embedding_gt.h_text),
+                generate_similar_noise(audio_embedding_gt.style_vector_acoustic),
+                generate_similar_noise(audio_embedding_gt.style_vector_prosodic),
+            )
+
+        return audio_embedding_target
 
     def load_required_models(self):
         print("Loading TTS Model (StyleTTS2)...")
@@ -178,7 +258,7 @@ class EnvironmentLoader:
 
         return tts, asr
 
-    def generate_audio_data(self, mode: AttackMode, text_gt: str, text_target: str, tts: StyleTTS2, num_rms_candidates: int = 20):
+    def generate_audio_data(self, mode: AttackMode, text_gt: str, text_target: str, tts: StyleTTS2):
         """Generate audio data for ground-truth and target texts."""
         noise = torch.randn(1, 1, 256).to(self.device)
 
@@ -192,6 +272,7 @@ class EnvironmentLoader:
             )
             audio_embedding_data_gt = tts.extract_embeddings(tokens_gt, noise)
             audio_embedding_data_target = tts.extract_embeddings(tokens_target, noise)
+
         elif mode is AttackMode.ZERO_UNTARGETED:
             audio_embedding_data_target = AudioEmbeddingData(
                 audio_embedding_data_gt.input_length,
@@ -212,42 +293,17 @@ class EnvironmentLoader:
                 -audio_embedding_data_gt.style_vector_prosodic,
             )
 
-        else:
-            gt_rms = tts.inference_on_embedding(audio_embedding_data_gt).flatten().pow(2).mean().sqrt().item()
-            min_rms = 0.1 * gt_rms
+        else:  # NOISE_UNTARGETED
+            audio_embedding_data_target = AudioEmbeddingData(
+                audio_embedding_data_gt.input_length,
+                audio_embedding_data_gt.text_mask,
+                generate_similar_noise(audio_embedding_data_gt.h_bert),
+                generate_similar_noise(audio_embedding_data_gt.h_text),
+                generate_similar_noise(audio_embedding_data_gt.style_vector_acoustic),
+                generate_similar_noise(audio_embedding_data_gt.style_vector_prosodic),
+            )
 
-            best_embedding = None
-            best_rms = -1.0
-
-            for attempt in range(num_rms_candidates):
-                candidate_embedding = AudioEmbeddingData(
-                    audio_embedding_data_gt.input_length,
-                    audio_embedding_data_gt.text_mask,
-                    generate_similar_noise(audio_embedding_data_gt.h_bert),
-                    generate_similar_noise(audio_embedding_data_gt.h_text),
-                    generate_similar_noise(audio_embedding_data_gt.style_vector_acoustic),
-                    generate_similar_noise(audio_embedding_data_gt.style_vector_prosodic),
-                )
-                candidate_audio = tts.inference_on_embedding(candidate_embedding).flatten()
-                rms = candidate_audio.pow(2).mean().sqrt().item()
-
-                if rms > best_rms:
-                    best_rms = rms
-                    best_embedding = candidate_embedding
-
-                if rms >= min_rms:
-                    print(f"[Log] Target sampled (attempt {attempt + 1}, RMS={rms:.4f}, GT RMS={gt_rms:.4f})")
-                    break
-            else:
-                print(f"[Log] Using best target after 5 attempts (RMS={best_rms:.4f}, threshold={min_rms:.4f})")
-
-            audio_embedding_data_target = best_embedding
-
-        # Run inference for ground-truth and target
         audio_gt = tts.inference_on_embedding(audio_embedding_data_gt).flatten()
         audio_target = tts.inference_on_embedding(audio_embedding_data_target).flatten()
 
-        gt_rms = audio_gt.pow(2).mean().sqrt().item()
-        target_rms = audio_target.pow(2).mean().sqrt().item()
-
-        return audio_gt, audio_target, audio_embedding_data_gt, audio_embedding_data_target, gt_rms, target_rms
+        return audio_gt, audio_target, audio_embedding_data_gt, audio_embedding_data_target

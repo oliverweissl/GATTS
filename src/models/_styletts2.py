@@ -198,7 +198,7 @@ class StyleTTS2:
 
         style_vector_acoustic, style_vector_prosodic = self._compute_style_vector(noise, h_bert_raw, embedding_scale, diffusion_steps)
 
-        return AudioEmbeddingData(input_lengths, text_mask, h_bert, h_text, style_vector_acoustic, style_vector_prosodic)
+        return AudioEmbeddingData(input_lengths, text_mask, h_bert, h_text, style_vector_acoustic, style_vector_prosodic, tokens)
 
     @torch.no_grad()
     def inference_on_embedding(self, audio_embedding_data: AudioEmbeddingData) -> Tensor:

@@ -31,9 +31,6 @@ class ConfigData:
     subspace_optimization: bool
     random_matrix: torch.Tensor
 
-    # --- Target Selection ---
-    num_rms_candidates: int = 20
-
     def print_summary(self):
         """Prints the formatted configuration to console."""
         print("=== Configuration ===")
@@ -137,6 +134,8 @@ class AudioEmbeddingData:
 
     style_vector_acoustic: torch.Tensor
     style_vector_prosodic: torch.Tensor
+
+    tokens: Optional[torch.Tensor] = None
 
 @dataclass
 class AudioData:
