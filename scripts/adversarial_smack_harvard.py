@@ -12,6 +12,8 @@ Then run this script (smack env) from the SMACK directory:
 """
 
 import os
+import random
+
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':16:8'
 import sys
 
@@ -39,12 +41,12 @@ TARGET_MODEL = 'whisperASR'
 AUDIO_DIR = 'outputs/'
 
 
-def run_attack(reference_audio: str, reference_text: str, output_dir: str):
+def run_attack(reference_audio: str, reference_text: str, output_dir: str, target_text: str | None):
     """Run genetic + gradient attack for one sentence."""
     os.makedirs(output_dir, exist_ok=True)
 
     start_time = time.time()
-    ga = GeneticAlgorithm(reference_audio, reference_text, TARGET_MODEL, POPULATION_SIZE)
+    ga = GeneticAlgorithm(reference_audio, reference_text, TARGET_MODEL, target_text, POPULATION_SIZE)
     fittest_individual = ga.run(GENETIC_ITERATIONS)
 
     print("Genetic algorithm finished. Launching gradient estimation.\n")
@@ -71,6 +73,7 @@ def main():
     parser.add_argument('--end', type=int, default=10,
                         help='Last Harvard sentence index (1-based, inclusive)')
     parser.add_argument('--gpu', type=int, default=None, help='GPU id to use')
+    parser.add_argument("--untargeted", type=bool, default=False, action="store_true")
     args = parser.parse_args()
 
     if args.gpu is not None:
@@ -83,7 +86,7 @@ def main():
     print('=' * 60)
 
     run_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    output_base = os.path.join('outputs', 'results', 'SMACK', run_timestamp)
+    output_base = os.path.join('outputs', 'results', 'SMACK'+("" if args.untargeted else "_targeted"), run_timestamp)
 
     if not os.path.exists("scripts/SMACK/SampleDir"):
         os.mkdir("scripts/SMACK/SampleDir")
@@ -103,7 +106,9 @@ def main():
         sentence_dir = os.path.join(output_base, f'sentence_{sentence_id:03d}')
         os.makedirs(sentence_dir, exist_ok=True)
 
-        p_refined, elapsed = run_attack(reference_audio, sentence_text, sentence_dir)
+        target_sentence = None if args.untargeted else random.choice([HARVARD_SENTENCES[i] for i in range(len(HARVARD_SENTENCES)) if i-1 != sentence_id])
+
+        p_refined, elapsed = run_attack(reference_audio, sentence_text, sentence_dir, target_sentence)
 
         # Synthesize adversarial audio from the refined prosody vector
         # ETTS (WaveGlow) outputs at 22050 Hz — resample to 16 kHz for consistency

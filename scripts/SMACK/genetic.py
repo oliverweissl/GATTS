@@ -17,10 +17,11 @@ import soundfile as sf
 
 class GeneticAlgorithm():
 
-    def __init__(self, reference_audio, reference_text, target_model, population_size):
+    def __init__(self, reference_audio, reference_text, target_model, target: str | None, population_size):
         self.reference_audio = reference_audio
         self.reference_text = reference_text
         self.target_model = target_model
+        self.target = target
         self.population_size = population_size
 
     def _np_softmax(self, input):
@@ -71,22 +72,15 @@ class GeneticAlgorithm():
                 fitness_ALINE = 10000
             else:
                 # Maximize distance from reference_text (untargeted)
-                fitness_levenshtein = levenshteinDistance(transcription, self.reference_text) / (
-                            (len(transcription) + len(self.reference_text)) / 2)
-                fitness_CMU = CMU_similarity(transcription, self.reference_text)
-                fitness_ALINE = ALINE_dissimilarity(transcription, self.reference_text)
+                fitness_comp = self.reference_text if self.target is None else self.target
+                fitness_levenshtein = levenshteinDistance(transcription, fitness_comp ) / (
+                            (len(transcription) + len(fitness_comp )) / 2)
+                fitness_CMU = CMU_similarity(transcription, fitness_comp)
+                fitness_ALINE = ALINE_dissimilarity(transcription, fitness_comp )
 
             # Untargeted fitness: flip all directions to maximize distance from reference_text
             # fitness_levenshtein: [0, 1]; fitness_CMU: [0, 1]; fitness_ALINE: [0, 1000]; audio_quality: [0, 5]
             fitness = -10 * fitness_levenshtein + 0.1 * fitness_CMU - 0.0001 * fitness_ALINE - 0.05 * audio_quality
-
-            #print(f"[Individual {individual_id} Fitness: {fitness:.2f}]")
-            #print(f"[Individual {individual_id} Levenshtein: {-10 * fitness_levenshtein:.2f}]")
-            #print(f"[Individual {individual_id} CMU: {0.1 * fitness_CMU:.2f}]")
-            #print(f"[Individual {individual_id} ALINE: {-0.0001 * fitness_ALINE:.2f}]")
-            #print(f"[Individual {individual_id} NISQA: {0.05 * audio_quality:.2f}]")
-            #print('\n')
-
             population_fitness.append(fitness)
 
         return population_fitness

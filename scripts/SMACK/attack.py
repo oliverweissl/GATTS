@@ -27,6 +27,11 @@ parser.add_argument('--content',
                     required=True,
                     help='The reference speech content in the audio.')
 
+parser.add_argument('--target',
+                    type=str,
+                    required=False,
+                    help='The targeted content in the audio.')
+
 # Parse the arguments
 args = parser.parse_args()
 
@@ -35,6 +40,7 @@ reference_audio = args.audio
 reference_text = args.content
 # target_model can be 'googleASR', 'iflytekASR', or 'whisperASR'
 target_model = args.model
+target = args.target
 
 # Resample audio to 16 kHz if needed
 audio, sr = librosa.load(reference_audio, sr=None)
@@ -51,7 +57,10 @@ gradient_iterations = 100
 # Record the start time
 start_time = time.time()
 
-ga = GeneticAlgorithm(reference_audio, reference_text, target_model, population_size)
+ga_args = [reference_audio, reference_text, target_model, population_size]
+if target is not None:
+    ga_args = [reference_audio, reference_text, target_model, target, population_size]
+ga = GeneticAlgorithm(*ga_args)
 
 # Run the Genetic Algorithm
 fittest_individual = ga.run(genetic_iterations)
@@ -59,7 +68,10 @@ fittest_individual = ga.run(genetic_iterations)
 print("The adapted genetic algorithm finished. Now launching the gradient estimation. \n")
 
 # Initialize the GradientEstimation
-gradient_estimator = GradientEstimation(reference_audio, reference_text, target_model, sigma=0.1, learning_rate=0.01, K=20)
+ge_args = [reference_audio, reference_text, target_model]
+if target is not None:
+    ge_args = [reference_audio, reference_text, target_model, target]
+gradient_estimator = GradientEstimation(*ge_args, sigma=0.1, learning_rate=0.01, K=20)
 
 # Run the Gradient Estimation
 p_refined = gradient_estimator.refine_prosody_vector(fittest_individual, gradient_iterations)

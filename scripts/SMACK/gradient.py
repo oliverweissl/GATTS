@@ -24,6 +24,7 @@ class GradientEstimation:
         self.sigma = sigma
         self.learning_rate = learning_rate
         self.K = K
+
     def _calculate_loss(self):
         """ Calculates the loss of a given noise vector """
 
