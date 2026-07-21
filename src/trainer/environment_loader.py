@@ -14,7 +14,7 @@ import torch
 import numpy as np
 
 # Local imports
-from ..models import StyleTTS2, Whisper
+from ..models import StyleTTS2, canonical_asr_model_name, load_asr_model
 from .vector_manipulator import add_numbers_pattern, generate_similar_noise
 
 # Import dataclasses and enums
@@ -43,7 +43,7 @@ class EnvironmentLoader:
         config_data.print_summary()
 
         # 2. Models
-        tts_model, asr_model = self.load_required_models()
+        tts_model, asr_model = self.load_required_models(config_data.asr_model_name)
 
         # 3. Audio Data
         audio_gt, audio_target, audio_embedding_gt, audio_embedding_target = self.generate_audio_data(config_data.mode, config_data.text_gt, config_data.text_target, tts_model)
@@ -151,6 +151,8 @@ class EnvironmentLoader:
         # Set batch size (Set to pop_size if pop_size < batch_size or batch_size <= 0)
         batch_size = min(args.batch_size, args.pop_size) if args.batch_size > 0 else args.pop_size
 
+        asr_model_name = canonical_asr_model_name(getattr(args, "asr_model", "whisper"))
+
         return ConfigData(
             text_gt=args.ground_truth_text,
             text_target=args.target_text,
@@ -161,6 +163,7 @@ class EnvironmentLoader:
             size_per_phoneme=args.size_per_phoneme,
             batch_size=batch_size,
             notify=args.notify,
+            asr_model_name=asr_model_name,
             mode=mode,
             active_objectives=active_objectives,
             thresholds=thresholds,
@@ -169,12 +172,13 @@ class EnvironmentLoader:
             num_rms_candidates=getattr(args, 'num_rms_candidates', 20),
         )
 
-    def load_required_models(self):
+    def load_required_models(self, asr_model_name: str = "whisper"):
         print("Loading TTS Model (StyleTTS2)...")
         tts = StyleTTS2(device=self.device)
 
-        print("Loading ASR Model (Whisper)...")
-        asr = Whisper(device=self.device)
+        canonical_name = canonical_asr_model_name(asr_model_name)
+        print(f"Loading ASR Model ({canonical_name})...")
+        asr = load_asr_model(canonical_name, device=self.device)
 
         return tts, asr
 

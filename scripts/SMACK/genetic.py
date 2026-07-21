@@ -12,12 +12,31 @@ from synthesis import audio_synthesis
 from google_ASR import google_ASR
 from iflytek_ASR import iflytek_ASR
 from whisper_ASR import whisper_ASR
+from wav2vec2_ASR import wav2vec2_ASR
+from speechbrain_ASR import speechbrain_ASR
 import soundfile as sf
+from typing import Optional
+
+ASR_DISPATCH = {
+    'googleASR': google_ASR,
+    'iflytekASR': iflytek_ASR,
+    'whisperASR': whisper_ASR,
+    'wav2vec2ASR': wav2vec2_ASR,
+    'speechbrainASR': speechbrain_ASR,
+}
 
 
 class GeneticAlgorithm():
 
-    def __init__(self, reference_audio, reference_text, target_model, target: str | None, population_size):
+    def __init__(self, reference_audio, reference_text, target_model, target: Optional[str] = None, population_size: Optional[int] = None):
+        if isinstance(target, int) and population_size is None:
+            population_size = target
+            target = None
+        if population_size is None:
+            raise ValueError("population_size must be provided")
+        if target_model not in ASR_DISPATCH:
+            raise ValueError(f"Unsupported target_model '{target_model}'. Choose one of: {', '.join(ASR_DISPATCH)}")
+
         self.reference_audio = reference_audio
         self.reference_text = reference_text
         self.target_model = target_model
@@ -53,14 +72,8 @@ class GeneticAlgorithm():
 
             audio_quality = NISQA_score(tmp_audio_file)
 
-            if self.target_model == 'googleASR':
-                transcription = google_ASR(tmp_audio_file)
-
-            if self.target_model == 'iflytekASR':
-                transcription = iflytek_ASR(tmp_audio_file)
-
-            if self.target_model == 'whisperASR':
-                transcription = whisper_ASR(audio_numpy)
+            asr_input = audio_numpy if self.target_model in {'whisperASR', 'wav2vec2ASR', 'speechbrainASR'} else tmp_audio_file
+            transcription = ASR_DISPATCH[self.target_model](asr_input)
 
             transcriped_file_name = self.target_model + '_' + re.sub(r'[^A-Za-z0-9]+', '', transcription[:50]) + '.wav'
             transcriped_file_path = unique_wav_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'SampleDir', transcriped_file_name))
@@ -217,7 +230,7 @@ if __name__ == '__main__':
 
     reference_audio = './Original_MyVoiceIsThePassword.wav'
     reference_text = "My voice is the password"
-    # target_model can be 'googleASR', 'iflytekASR', or 'whisperASR'
+    # target_model can be 'googleASR', 'iflytekASR', 'whisperASR', 'wav2vec2ASR', or 'speechbrainASR'
     target_model = 'whisperASR'
     # Run a small number of iterations with a small population size
     population_size = 5

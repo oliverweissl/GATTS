@@ -230,6 +230,7 @@ def compute_attack_summary(
         'text_data': {
             'ground_truth_text':     gt_text,
             'gt_transcription':      gt_transcription,
+            'asr_transcription':     whisper_transcription,
             'whisper_transcription': whisper_transcription,
         },
         'metrics': {

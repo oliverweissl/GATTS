@@ -487,6 +487,7 @@ class RunLogger:
             },
             "algorithm_parameters": {
                 "attack_mode": config_data.mode.name,
+                "asr_model": config_data.asr_model_name,
                 "objectives": fitness_names,
                 "pop_size": config_data.pop_size,
                 "num_generations": num_generations,
@@ -611,6 +612,9 @@ class RunLogger:
         row["target_text"] = text.get("target_text")
         row["asr_transcription"] = text.get("asr_transcription")
         row["semantic_similarity"] = text.get("semantic_similarity")
+
+        params = summary.get("algorithm_parameters", {})
+        row["asr_model"] = params.get("asr_model")
 
         success = summary.get("success_metrics", {})
         row["success"] = success.get("success")

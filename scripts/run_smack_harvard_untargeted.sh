@@ -3,6 +3,7 @@
 source ~/miniconda3/etc/profile.d/conda.sh
 
 # Split ranges
+ASR_MODEL=${ASR_MODEL:-whisper}
 START0=0
 END0=50
 
@@ -16,7 +17,9 @@ python scripts/generate_harvard_audios.py --start $START0 --end $END1
 (
 conda run --no-capture-output  -n smack python scripts/adversarial_smack_harvard.py \
     --start $START0 --end $END0 \
-    --gpu 0 --untargeted
+    --gpu 0 \
+    --asr_model $ASR_MODEL \
+    --untargeted
 ) &
 
 PID0=$!
@@ -25,7 +28,9 @@ PID0=$!
 (
 conda run --no-capture-output -n smack python scripts/adversarial_smack_harvard.py \
     --start $START1 --end $END1 \
-    --gpu 1 --untargeted
+    --gpu 1 \
+    --asr_model $ASR_MODEL \
+    --untargeted
 ) &
 
 PID1=$!

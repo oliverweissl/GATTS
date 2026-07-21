@@ -33,6 +33,8 @@ from pymoo.algorithms.moo.nsga2 import NSGA2
 
 from src.data.harvard_sentences import HARVARD_SENTENCES
 
+ASR_MODEL_CHOICES = ("whisper", "wav2vec2", "speechbrain")
+
 
 def initialize_parser():
     parser = argparse.ArgumentParser(description="Adversarial TTS — Harvard Sentences")
@@ -53,6 +55,8 @@ def initialize_parser():
     parser.add_argument("--save_graphs", action="store_true", default=True)
     parser.add_argument('--gpu', type=int, default=0,
                         help='CUDA device index to use (default: 0)')
+    parser.add_argument('--asr_model', type=str, default='whisper', choices=ASR_MODEL_CHOICES,
+                        help='ASR backend to optimize/evaluate against')
     return parser
 
 
@@ -68,13 +72,14 @@ def main():
     print(f"Device: {device} | GPUs: {torch.cuda.device_count()}")
 
     loader = EnvironmentLoader(device)
-    tts_model, asr_model = loader.load_required_models()
+    tts_model, asr_model = loader.load_required_models(args.asr_model)
     print("Models loaded.")
 
     sentence_ids = list(range(args.sentence_start, args.sentence_end + 1))
 
-    run_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+    run_timestamp = f"{args.asr_model}_" + datetime.datetime.now().strftime("%Y%m%d_%H%M")
     print(f"Run timestamp: {run_timestamp}")
+    print(f"ASR model: {args.asr_model}")
     print(f"{'='*60}")
     print(f"  mode:               {args.mode}")
     print(f"  sentence positions: {args.sentence_start} → {args.sentence_end}  →  IDs: {sentence_ids}")
@@ -114,6 +119,7 @@ def main():
                     num_rms_candidates=1,
                     batch_size=args.batch_size,
                     notify=False,
+                    asr_model=args.asr_model,
                     subspace_optimization=False,
                     mode=args.mode,
                     objectives=args.objectives,

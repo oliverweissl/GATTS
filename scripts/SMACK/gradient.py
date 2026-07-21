@@ -5,14 +5,24 @@ from utils import levenshteinDistance
 from CMUPhoneme.string_similarity import CMU_similarity
 from ALINEPhoneme.string_dissimilarity import ALINE_dissimilarity
 from NISQA.predict import NISQA_score
-from synthesis import audio_synthesis
 from google_ASR import google_ASR
 from iflytek_ASR import iflytek_ASR
 from whisper_ASR import whisper_ASR
+from wav2vec2_ASR import wav2vec2_ASR
+from speechbrain_ASR import speechbrain_ASR
+
+
+ASR_DISPATCH = {
+    'googleASR': google_ASR,
+    'iflytekASR': iflytek_ASR,
+    'whisperASR': whisper_ASR,
+    'wav2vec2ASR': wav2vec2_ASR,
+    'speechbrainASR': speechbrain_ASR,
+}
 
 
 class GradientEstimation:
-    def __init__(self, reference_audio, reference_text, target_model, sigma, learning_rate, K):
+    def __init__(self, reference_audio, reference_text, target_model, target=None, sigma=0.1, learning_rate=0.01, K=20):
         """
         :param sigma: Scaling factor for noise.
         :param learning_rate: Learning rate for updating the prosody vector.
@@ -20,7 +30,11 @@ class GradientEstimation:
         """
         self.reference_audio = reference_audio
         self.reference_text = reference_text
+        if target_model not in ASR_DISPATCH:
+            raise ValueError(f"Unsupported target_model '{target_model}'. Choose one of: {', '.join(ASR_DISPATCH)}")
+
         self.target_model = target_model
+        self.target = target
         self.sigma = sigma
         self.learning_rate = learning_rate
         self.K = K
@@ -33,24 +47,18 @@ class GradientEstimation:
         
         audio_quality = NISQA_score(tmp_audio_file)
 
-        if self.target_model == 'googleASR':
-            transcription = google_ASR(tmp_audio_file)
-
-        if self.target_model == 'iflytekASR':
-            transcription = iflytek_ASR(tmp_audio_file)
-
-        if self.target_model == 'whisperASR':
-            transcription = whisper_ASR(tmp_audio_file)
+        transcription = ASR_DISPATCH[self.target_model](tmp_audio_file)
 
         if transcription == 'NA':
             loss_levenshtein = 100
             loss_CMU = 0
             loss_ALINE = 10000
         else:
-            # Maximize distance from reference_text (untargeted)
-            loss_levenshtein = levenshteinDistance(transcription, self.reference_text) / ((len(transcription) + len(self.reference_text)) / 2)
-            loss_CMU = CMU_similarity(transcription, self.reference_text)
-            loss_ALINE = ALINE_dissimilarity(transcription, self.reference_text)
+            # Maximize distance from reference_text (untargeted), or move toward target text.
+            loss_text = self.reference_text if self.target is None else self.target
+            loss_levenshtein = levenshteinDistance(transcription, loss_text) / ((len(transcription) + len(loss_text)) / 2)
+            loss_CMU = CMU_similarity(transcription, loss_text)
+            loss_ALINE = ALINE_dissimilarity(transcription, loss_text)
 
         # Untargeted loss: flip all directions to maximize distance from reference_text
         # loss_levenshtein: [0, 1]; loss_CMU: [0, 1]; loss_ALINE: [0, 1000]; audio_quality: [0, 5]
@@ -93,7 +101,7 @@ if __name__ == '__main__':
 
     reference_audio = './Original_MyVoiceIsThePassword.wav'
     reference_text = "My voice is the password"
-    # target_model can be 'googleASR' or 'iflytekASR' or 'whisperASR'
+    # target_model can be 'googleASR', 'iflytekASR', 'whisperASR', 'wav2vec2ASR', or 'speechbrainASR'
     target_model = 'whisperASR'
     # Run a small number of iterations
     gradient_iterations = 20

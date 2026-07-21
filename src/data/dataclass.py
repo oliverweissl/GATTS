@@ -21,6 +21,7 @@ class ConfigData:
     size_per_phoneme: int
     batch_size: int
     notify: bool
+    asr_model_name: str
 
     # --- Logic Constants ---
     mode: AttackMode
@@ -47,6 +48,7 @@ class ConfigData:
         print(f"Batch Size:            {self.batch_size}")
         print(f"Subspace Optimization: {self.subspace_optimization}")
         print(f"Notify (WhatsApp):     {self.notify}")
+        print(f"ASR Model:             {self.asr_model_name}")
         print(f"Mode:                  {self.mode.name}")
 
         obj_names = [obj.name for obj in self.active_objectives]

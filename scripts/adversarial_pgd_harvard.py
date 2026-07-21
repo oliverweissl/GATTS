@@ -24,7 +24,7 @@ import soundfile as sf
 import torch
 
 from src.data.harvard_sentences import HARVARD_SENTENCES
-from src.models._whisper import Whisper
+from src.models import ASR_MODEL_CHOICES, load_asr_model
 from src.trainer.result_writer import save_attack_result
 
 
@@ -83,7 +83,7 @@ def run_pgd_attack(output_dir, gpu=None):
     print(f"[PGD] subprocess exited with code {result.returncode}")
 
 
-def organize_outputs(sentence_ids, whisper_model, elapsed_time_seconds=None, n_sentences=1):
+def organize_outputs(sentence_ids, asr_model, asr_model_name: str, elapsed_time_seconds=None, n_sentences=1):
     save_path = os.path.join(AUDIO_DIR, 'pgd_save')
 
     for sid in sentence_ids:
@@ -94,17 +94,18 @@ def organize_outputs(sentence_ids, whisper_model, elapsed_time_seconds=None, n_s
             continue
 
         sentence_dir = os.path.join(AUDIO_DIR, f'harvard_sentence_{sid:03d}')
-        adv_dst = os.path.join(sentence_dir, 'pgd.wav')
+        method_name = 'pgd' if asr_model_name == 'whisper' else f'pgd_{asr_model_name}'
+        adv_dst = os.path.join(sentence_dir, f'{method_name}.wav')
         shutil.copy(adv_src, adv_dst)
 
         audio, sr = sf.read(adv_dst)
-        texts, _ = whisper_model.inference(torch.from_numpy(audio).float())
+        texts, _ = asr_model.inference(torch.from_numpy(audio).float(), sample_rate=sr)
         transcription = texts[0]
 
         sentence_elapsed = elapsed_time_seconds / n_sentences if elapsed_time_seconds else 0.0
         save_attack_result(
             sentence_id=sid,
-            method='pgd',
+            method=method_name,
             audio=audio,
             transcription=transcription,
             gt_text=HARVARD_SENTENCES[sid - 1],
@@ -114,6 +115,8 @@ def organize_outputs(sentence_ids, whisper_model, elapsed_time_seconds=None, n_s
                 'pop_size': 1,
                 'snr': SNR,
                 'seed': SEED,
+                'attack_asr_model': 'whisper',
+                'eval_asr_model': asr_model_name,
             },
         )
 
@@ -125,6 +128,8 @@ def main():
     parser.add_argument('--start', type=int, default=1, help='First sentence index (1-based)')
     parser.add_argument('--end', type=int, default=100, help='Last sentence index (1-based, inclusive)')
     parser.add_argument('--gpu', type=int, default=None, help='GPU id to use')
+    parser.add_argument('--asr_model', type=str, default='whisper', choices=ASR_MODEL_CHOICES,
+                        help='ASR backend used to transcribe/evaluate the generated PGD audio')
     args = parser.parse_args()
 
     if args.gpu is not None:
@@ -134,9 +139,11 @@ def main():
 
     print(f"Sentences: {args.start} → {args.end}")
     print(f"SNR: {SNR} | Iterations: {NB_ITER} | Seed: {SEED}")
+    print(f"PGD attack model: whisper | evaluation ASR model: {args.asr_model}")
     print('=' * 60)
 
-    whisper_model = Whisper()
+    device = f"cuda:{args.gpu}" if (args.gpu is not None and torch.cuda.is_available()) else ("cuda:0" if torch.cuda.is_available() else "cpu")
+    asr_model = load_asr_model(args.asr_model, device=device)
 
     output_dir = 'outputs'
     os.makedirs(output_dir, exist_ok=True)
@@ -146,10 +153,10 @@ def main():
 
     import time
     t0 = time.time()
-    run_pgd_attack(output_dir)
+    run_pgd_attack(output_dir, gpu=args.gpu)
     elapsed = time.time() - t0
 
-    organize_outputs(sentence_ids, whisper_model, elapsed_time_seconds=elapsed, n_sentences=len(sentence_ids))
+    organize_outputs(sentence_ids, asr_model, args.asr_model, elapsed_time_seconds=elapsed, n_sentences=len(sentence_ids))
     print('\n[Done]')
 
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Run adversarial waveform attack on Harvard sentences 1–100
+ASR_MODEL=${ASR_MODEL:-whisper}
 # Run from project root: bash scripts/run_waveform_harvard.sh
 
 # GPU 0: sentences 1–50 (background)
@@ -14,7 +15,8 @@ python scripts/adversarial_waveform_harvard.py \
     --objectives "PESQ=0.2, SET_OVERLAP=0.5" \
     --mode NOISE_UNTARGETED \
     --seed_target \
-    --gpu 0 &
+    --gpu 0 \
+    --asr_model $ASR_MODEL &
 
 PID0=$!
 
@@ -30,7 +32,8 @@ python scripts/adversarial_waveform_harvard.py \
     --objectives "PESQ=0.2, SET_OVERLAP=0.5" \
     --mode NOISE_UNTARGETED \
     --seed_target \
-    --gpu 1 &
+    --gpu 1 \
+    --asr_model $ASR_MODEL &
 
 PID1=$!
 

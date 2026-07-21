@@ -20,7 +20,7 @@ parser.add_argument('--audio',
 parser.add_argument('--model',
                     type=str,
                     required=True,
-                    help='The target model can be "googleASR" or "iflytekASR" or "whisperASR" or "gmmSV" or "ivectorSV"')
+                    help='The target model can be "googleASR", "iflytekASR", "whisperASR", "wav2vec2ASR", or "speechbrainASR"')
 
 parser.add_argument('--content',
                     type=str,
@@ -38,7 +38,7 @@ args = parser.parse_args()
 
 reference_audio = args.audio
 reference_text = args.content
-# target_model can be 'googleASR', 'iflytekASR', or 'whisperASR'
+# target_model can be 'googleASR', 'iflytekASR', 'whisperASR', 'wav2vec2ASR', or 'speechbrainASR'
 target_model = args.model
 target = args.target
 

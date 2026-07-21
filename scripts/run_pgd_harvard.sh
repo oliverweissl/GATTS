@@ -3,6 +3,7 @@
 source ~/miniconda3/etc/profile.d/conda.sh
 
 # Split attack ranges
+ASR_MODEL=${ASR_MODEL:-whisper}
 START=1
 END=100
 
@@ -14,5 +15,6 @@ for i in $(seq $START $END); do
 
     conda run --no-capture-output -n pgd python scripts/adversarial_pgd_harvard.py \
         --start $i --end $i \
-        --gpu 0
+        --gpu 0 \
+        --asr_model $ASR_MODEL
 done

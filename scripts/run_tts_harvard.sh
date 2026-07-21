@@ -1,5 +1,6 @@
 #!/bin/bash
 # Run from project root: bash scripts/run_adversarial_tts_harvard.sh
+ASR_MODEL=${ASR_MODEL:-whisper}
 
 # GPU 0: sentences 1–50 (background)
 python scripts/adversarial_tts_harvard.py \
@@ -15,7 +16,8 @@ python scripts/adversarial_tts_harvard.py \
     --objectives "PESQ=0.2, SET_OVERLAP=0.5" \
     --mode NOISE_UNTARGETED \
     --seed_target \
-    --gpu 0 &
+    --gpu 0 \
+    --asr_model $ASR_MODEL &
 
 PID0=$!
 
@@ -33,7 +35,8 @@ python scripts/adversarial_tts_harvard.py \
     --objectives "PESQ=0.2, SET_OVERLAP=0.5" \
     --mode NOISE_UNTARGETED \
     --seed_target \
-    --gpu 1 &
+    --gpu 1 \
+    --asr_model $ASR_MODEL &
 
 PID1=$!
 
