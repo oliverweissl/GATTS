@@ -10,6 +10,7 @@ from iflytek_ASR import iflytek_ASR
 from whisper_ASR import whisper_ASR
 from wav2vec2_ASR import wav2vec2_ASR
 from speechbrain_ASR import speechbrain_ASR
+from synthesis import audio_synthesis
 
 
 ASR_DISPATCH = {
@@ -39,32 +40,34 @@ class GradientEstimation:
         self.learning_rate = learning_rate
         self.K = K
 
-    def _calculate_loss(self):
-        """ Calculates the loss of a given noise vector """
+    def _calculate_loss(self, p_i):
+        """Evaluate the fitness of a concrete prosody vector."""
 
-        transcription = ""
+        l_emo_numpy = p_i.reshape(-1, 32)
+        audio_numpy = audio_synthesis(l_emo_numpy, self.reference_audio, self.reference_text)
         tmp_audio_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'SampleDir', 'synthesis.wav')
         
         audio_quality = NISQA_score(tmp_audio_file)
 
-        transcription = ASR_DISPATCH[self.target_model](tmp_audio_file)
+        asr_input = audio_numpy if self.target_model in {'whisperASR', 'wav2vec2ASR', 'speechbrainASR'} else tmp_audio_file
+        transcription = ASR_DISPATCH[self.target_model](asr_input)
 
         if transcription == 'NA':
             loss_levenshtein = 100
             loss_CMU = 0
             loss_ALINE = 10000
         else:
-            # Maximize distance from reference_text (untargeted), or move toward target text.
+            # Targeted runs maximize similarity to the target; untargeted runs
+            # maximize distance from the reference text.
             loss_text = self.reference_text if self.target is None else self.target
             loss_levenshtein = levenshteinDistance(transcription, loss_text) / ((len(transcription) + len(loss_text)) / 2)
             loss_CMU = CMU_similarity(transcription, loss_text)
             loss_ALINE = ALINE_dissimilarity(transcription, loss_text)
 
-        # Untargeted loss: flip all directions to maximize distance from reference_text
         # loss_levenshtein: [0, 1]; loss_CMU: [0, 1]; loss_ALINE: [0, 1000]; audio_quality: [0, 5]
-        loss = -10*loss_levenshtein + 0.1*loss_CMU - 0.0001*loss_ALINE - 0.05*audio_quality
+        loss = -10*loss_levenshtein + 0.1*loss_CMU - 0.0001*loss_ALINE + 0.05*audio_quality
 
-        print(f'loss:{loss}, loss_levenshtein: {-10*loss_levenshtein}, loss_CMU: {0.1*loss_CMU}, loss_ALINE: {-0.0001*loss_ALINE}, audio_quality: {-0.05*audio_quality} \n')
+        print(f'loss:{loss}, loss_levenshtein: {-10*loss_levenshtein}, loss_CMU: {0.1*loss_CMU}, loss_ALINE: {-0.0001*loss_ALINE}, audio_quality: {+0.05*audio_quality} \n')
 
         return loss
     
@@ -76,7 +79,7 @@ class GradientEstimation:
         gradient = 0
         for k in range(self.K):
             u_k = np.random.normal(0, 1, size=p_i.shape)
-            loss = self._calculate_loss()
+            loss = self._calculate_loss(p_i + self.sigma * u_k)
             gradient += loss * u_k
         gradient = gradient / (self.sigma * self.K)
         

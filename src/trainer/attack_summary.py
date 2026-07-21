@@ -107,6 +107,7 @@ def compute_attack_summary(
     num_generations: int,
     pop_size: int,
     elapsed_time_seconds: float,
+    target_text: str = None,
     # Optional context
     output_path: str = None,
     sentence_id: int = None,
@@ -133,6 +134,7 @@ def compute_attack_summary(
         adversarial_audio_path: Path to the adversarial output WAV.
         gt_audio_path:          Path to the ground truth WAV (PESQ / UTMOS reference).
         gt_text:                Original sentence text (SetOverlap + SBERT anchor).
+        target_text:            Intended ASR transcript for targeted attacks, if any.
         attack_method:          "TTS", "Waveform", "SMACK", or "PGD".
         num_generations:        Number of optimizer generations executed.
         pop_size:               Population size.
@@ -230,6 +232,7 @@ def compute_attack_summary(
         'text_data': {
             'ground_truth_text':     gt_text,
             'gt_transcription':      gt_transcription,
+            'target_text':           target_text,
             'asr_transcription':     whisper_transcription,
             'whisper_transcription': whisper_transcription,
         },
@@ -246,6 +249,13 @@ def compute_attack_summary(
             'pop_size':                pop_size,
             'elapsed_time_seconds':    round(elapsed_time_seconds, 2),
             'avg_time_per_generation': avg_time_per_gen,
+        },
+        'success_metrics': {
+            'success': (
+                whisper_transcription.strip().lower() == target_text.strip().lower()
+                if target_text is not None else
+                whisper_transcription.strip().lower() != gt_transcription.strip().lower()
+            ),
         },
     }
 

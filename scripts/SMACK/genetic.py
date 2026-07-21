@@ -84,16 +84,16 @@ class GeneticAlgorithm():
                 fitness_CMU = 0
                 fitness_ALINE = 10000
             else:
-                # Maximize distance from reference_text (untargeted)
+                # Targeted runs maximize similarity to the target; untargeted runs
+                # maximize distance from the reference text.
                 fitness_comp = self.reference_text if self.target is None else self.target
                 fitness_levenshtein = levenshteinDistance(transcription, fitness_comp ) / (
                             (len(transcription) + len(fitness_comp )) / 2)
                 fitness_CMU = CMU_similarity(transcription, fitness_comp)
                 fitness_ALINE = ALINE_dissimilarity(transcription, fitness_comp )
 
-            # Untargeted fitness: flip all directions to maximize distance from reference_text
             # fitness_levenshtein: [0, 1]; fitness_CMU: [0, 1]; fitness_ALINE: [0, 1000]; audio_quality: [0, 5]
-            fitness = -10 * fitness_levenshtein + 0.1 * fitness_CMU - 0.0001 * fitness_ALINE - 0.05 * audio_quality
+            fitness = -10 * fitness_levenshtein + 0.1 * fitness_CMU - 0.0001 * fitness_ALINE + 0.05 * audio_quality
             population_fitness.append(fitness)
 
         return population_fitness

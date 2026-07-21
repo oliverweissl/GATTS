@@ -152,6 +152,7 @@ def main():
             adversarial_audio_path=adv_path,
             gt_audio_path=gt_dst,
             gt_text=sentence_text,
+            target_text=target_sentence,
             attack_method='SMACK',
             num_generations=GENETIC_ITERATIONS + GRADIENT_ITERATIONS,
             pop_size=POPULATION_SIZE,
